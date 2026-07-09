@@ -13,7 +13,7 @@
  *  which activates the new worker; index.html then reloads on controllerchange.
  */
 
-const CACHE_VERSION = 'field-journal-v0.2.0';
+const CACHE_VERSION = 'field-journal-v0.3.0';
 const CACHE_NAME = CACHE_VERSION;
 
 // Everything needed to boot the app shell fully offline.
@@ -30,7 +30,15 @@ const APP_SHELL = [
 self.addEventListener('install', (event) => {
   // Do NOT skipWaiting here — we wait for the user to tap the update banner.
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then((cache) =>
+      // { cache: 'reload' } bypasses the browser HTTP cache so a freshly
+      // installing worker never precaches a stale (still-cached) app shell.
+      cache.addAll(APP_SHELL.map((u) => new Request(u, { cache: 'reload' })))
+    ).catch((err) => {
+      // addAll is atomic: one 404 kills the whole install silently. Surface it.
+      console.error('[sw] precache failed — update will not proceed:', err);
+      throw err;
+    })
   );
 });
 
@@ -61,19 +69,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // App-shell navigations: serve index.html from cache when possible so the
-  // app launches offline; fall back to the network, then to the cached shell.
+  // All lookups are scoped to the CURRENT cache. The global caches.match()
+  // searches every cache oldest-first, so during the brief window between
+  // controllerchange (reload) and the activate handler finishing its old-cache
+  // cleanup, it could serve the previous version. Scoping avoids that race.
+
+  // App-shell navigations: serve index.html from the current cache so the app
+  // launches offline; fall back to the network, then to the cached root.
   if (req.mode === 'navigate') {
     event.respondWith(
-      caches.match('./index.html').then(
-        (cached) => cached || fetch(req).catch(() => caches.match('./'))
+      caches.open(CACHE_NAME).then((c) =>
+        c.match('./index.html').then(
+          (cached) => cached || fetch(req).catch(() => c.match('./'))
+        )
       )
     );
     return;
   }
 
-  // Static assets: cache-first, then network.
+  // Static assets: current-cache-first, then network.
   event.respondWith(
-    caches.match(req).then((cached) => cached || fetch(req))
+    caches.open(CACHE_NAME).then((c) =>
+      c.match(req).then((cached) => cached || fetch(req))
+    )
   );
 });
