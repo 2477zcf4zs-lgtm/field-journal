@@ -13,7 +13,7 @@
  *  which activates the new worker; index.html then reloads on controllerchange.
  */
 
-const CACHE_VERSION = 'field-journal-v0.1.1';
+const CACHE_VERSION = 'field-journal-v0.2.0';
 const CACHE_NAME = CACHE_VERSION;
 
 // Everything needed to boot the app shell fully offline.
