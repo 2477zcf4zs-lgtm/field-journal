@@ -134,7 +134,7 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
 /* ---- Journal ---- */
 .day-head{font-variant:small-caps;letter-spacing:.1em;color:var(--ink-2);font-size:13px;
   border-bottom:1px solid var(--rule);padding:14px 0 5px;margin-top:6px;position:sticky;
-  top:var(--topbar-h,54px);z-index:5;background:var(--paper);}
+  top:calc(var(--topbar-h,54px) + var(--filter-h,0px));z-index:5;background:var(--paper);}
 .entry{display:flex;gap:12px;padding:12px 2px;border-bottom:1px solid var(--rule-soft);cursor:pointer;align-items:flex-start;}
 .entry:active{background:var(--paper-2);}
 .entry .ico-wrap{width:38px;height:38px;border-radius:50%;border:1px solid var(--rule);background:var(--paper-2);
@@ -210,8 +210,10 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
   border-radius:3px;padding:1px 6px;color:var(--ink-2);}
 
 /* ---- Phase 2: filter bar ---- */
-.filter-bar{position:sticky;top:var(--topbar-h,54px);z-index:6;background:var(--paper);padding:8px 0;}
-.filter-summary{display:flex;gap:8px;align-items:center;}
+.filter-bar{background:var(--paper);padding:8px 0 0;}
+/* Only the one-line summary sticks; the panel scrolls. Day-heads clear both. */
+.filter-summary{position:sticky;top:var(--topbar-h,54px);z-index:6;background:var(--paper);
+  display:flex;gap:8px;align-items:center;padding-bottom:8px;}
 .filter-panel{border:1px solid var(--rule);background:var(--paper-2);border-radius:4px;padding:10px 12px;margin-top:2px;}
 .filter-panel .flabel{font-variant:small-caps;letter-spacing:.1em;color:var(--ink-2);font-size:11px;margin:10px 0 5px;}
 .filter-panel .flabel:first-child{margin-top:0;}
@@ -222,8 +224,10 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
 .filter-dates input{flex:1;}
 
 /* ---- Phase 2: map ---- */
+/* isolate:isolate traps Leaflet's internal z-indexes (200–1000) so the map
+   never renders over the app scrim/sheet/toast. */
 #leafletMap{height:calc(100dvh - var(--topbar-h,54px) - 200px);min-height:320px;width:100%;
-  border:1px solid var(--rule);border-radius:4px;background:var(--paper-3);}
+  border:1px solid var(--rule);border-radius:4px;background:var(--paper-3);position:relative;z-index:0;isolation:isolate;}
 .map-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 2px;}
 .chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);}
 .chk input{width:18px;height:18px;}
@@ -237,6 +241,7 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
   background:var(--paper);border:1.5px solid var(--ink);box-shadow:0 1px 3px rgba(43,33,23,.35);color:var(--ink);}
 .fj-marker .ico{width:20px;height:20px;}
 .fj-spot{color:var(--ink-2);}
+.fj-pin{font-size:16px;color:var(--bad);}
 .fj-cluster{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;
   background:var(--paper-2);border:1.5px solid var(--ink);color:var(--ink);font-size:13px;font-family:var(--serif);}
 .leaflet-popup-content-wrapper{background:var(--paper);color:var(--ink);border-radius:5px;border:1px solid var(--ink);}
@@ -249,6 +254,25 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
 .pin-results{border:1px solid var(--rule);border-top:0;border-radius:0 0 4px 4px;max-height:180px;overflow-y:auto;background:var(--paper);}
 .pin-results div{padding:9px 12px;border-bottom:1px solid var(--rule-soft);cursor:pointer;font-size:13.5px;}
 .pin-results div:active{background:var(--paper-2);}
+
+/* ---- Phase 3: photos + weather ---- */
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.thumb{position:relative;width:74px;height:74px;border:1px solid var(--ink-2);border-radius:3px;overflow:hidden;background:var(--paper-3);}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.thumb .thumb-x{position:absolute;top:2px;right:2px;width:22px;height:22px;border:0;border-radius:50%;
+  background:var(--ink);color:var(--paper);font-size:14px;line-height:22px;text-align:center;cursor:pointer;padding:0;}
+.thumb.loading{display:flex;align-items:center;justify-content:center;}
+.spin{width:22px;height:22px;border:2px solid var(--rule);border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none;}}
+.entry .ephoto{width:38px;height:38px;flex:0 0 auto;border:1px solid var(--rule);border-radius:3px;object-fit:cover;background:var(--paper-3);}
+.wx-line{display:flex;align-items:center;gap:8px;}
+.wx-line .ico{width:20px;height:20px;}
+.photo-strip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;}
+.photo-strip img{width:88px;height:88px;object-fit:cover;border:1px solid var(--ink-2);border-radius:3px;cursor:zoom-in;}
+.zoom-overlay{position:fixed;inset:0;z-index:60;background:rgba(43,33,23,.92);display:none;align-items:center;justify-content:center;}
+.zoom-overlay.show{display:flex;}
+.zoom-overlay img{max-width:96vw;max-height:92vh;object-fit:contain;}
 </style>
 <style id="vendor-css">/* required styles */
 
@@ -1026,6 +1050,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <symbol id="ui-moon" viewBox="0 0 28 28"><path d="M20 16.5A8 8 0 1111.5 8a6.2 6.2 0 008.5 8.5z"/></symbol>
   <symbol id="ui-close" viewBox="0 0 28 28"><path d="M8 8l12 12M20 8L8 20"/></symbol>
   <symbol id="ui-book" viewBox="0 0 28 28"><path d="M14 8C11 5 7 5 5 6v15c2-1 6-1 9 2 3-3 7-3 9-2V6c-2-1-6-1-9 2z"/><path d="M14 8v17"/></symbol>
+  <!-- weather glyphs (§9.1) -->
+  <symbol id="wx-sun" viewBox="0 0 28 28"><circle cx="14" cy="14" r="4.5"/><path d="M14 4v2.5M14 21.5V24M4 14h2.5M21.5 14H24M6.9 6.9l1.8 1.8M19.3 19.3l1.8 1.8M21.1 6.9l-1.8 1.8M8.7 19.3l-1.8 1.8"/></symbol>
+  <symbol id="wx-partly" viewBox="0 0 28 28"><circle cx="10" cy="10" r="3.4"/><path d="M10 3.5v1.8M3.5 10h1.8M5.5 5.5l1.3 1.3M14.5 5.5l-1.3 1.3"/><path d="M9 20h9a3.5 3.5 0 000-7 5 5 0 00-9.6 1.4A3.4 3.4 0 009 20z"/></symbol>
+  <symbol id="wx-cloud" viewBox="0 0 28 28"><path d="M8 20h11a4 4 0 00.4-8A6 6 0 007.5 12 4 4 0 008 20z"/></symbol>
+  <symbol id="wx-fog" viewBox="0 0 28 28"><path d="M8 16h11a4 4 0 00.4-8A6 6 0 007.5 8 4 4 0 008 16z"/><path d="M6 19h13M8 22h11"/></symbol>
+  <symbol id="wx-rain" viewBox="0 0 28 28"><path d="M8 15h11a4 4 0 00.4-8A6 6 0 007.5 7 4 4 0 008 15z"/><path d="M9 18l-1 3M14 18l-1 3M19 18l-1 3"/></symbol>
+  <symbol id="wx-snow" viewBox="0 0 28 28"><path d="M8 15h11a4 4 0 00.4-8A6 6 0 007.5 7 4 4 0 008 15z"/><path d="M9 19v3M14 19v3M19 19v3" stroke-dasharray="1 3"/></symbol>
+  <symbol id="wx-storm" viewBox="0 0 28 28"><path d="M8 15h11a4 4 0 00.4-8A6 6 0 007.5 7 4 4 0 008 15z"/><path d="M13 17l-3 4h3l-1 3 4-5h-3z" class="fill"/></symbol>
 </svg>
 
 <div id="updateBanner" role="status">
@@ -1080,11 +1112,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </div>
     <span class="small-note" style="margin-left:10px">optional</span>
 
+    <div class="section-label">Photos</div>
+    <label class="filebtn">Add photo(s)<input type="file" id="photoInput" accept="image/*" multiple></label>
+    <div class="thumbs" id="photoThumbs"></div>
+
     <div class="section-label">Notes</div>
     <textarea id="notesInput" placeholder="distant, on the ridge trail…"></textarea>
 
     <button class="act save-btn" id="saveBtn">Save sighting</button>
-    <p class="small-note" style="text-align:center;margin-top:10px">Weather &amp; photos arrive in the next update.</p>
+    <p class="small-note" style="text-align:center;margin-top:10px">Weather is fetched automatically after saving.</p>
   </section>
 
   <!-- ===== JOURNAL ===== -->
@@ -1125,6 +1161,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="grip"></div><div id="sheetBody"></div></div>
 
 <div id="toast"><span id="toastMsg"></span><button id="toastAction" type="button">Undo</button></div>
+<div class="zoom-overlay" id="zoom"><img id="zoomImg" alt="photo"></div>
 
 <!-- Vendored Leaflet + Leaflet.markercluster, inlined at build time so the app
      shell is fully offline-capable (no runtime CDN, per spec §2). -->
@@ -1140,7 +1177,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <script>
 "use strict";
 /* Keep APP_VERSION in step with CACHE_VERSION in sw.js. */
-const APP_VERSION='v0.3.0';
+const APP_VERSION='v0.4.0';
 const SCHEMA_VERSION=1;
 
 /* ---------------- tiny helpers ---------------- */
@@ -1152,6 +1189,7 @@ const el=(t,props={},kids=[])=>{const n=document.createElement(t);
     else n.setAttribute(k,props[k]);}
   (Array.isArray(kids)?kids:[kids]).forEach(c=>c&&n.appendChild(typeof c==='string'?document.createTextNode(c):c));return n;};
 const uuid=()=>(crypto.randomUUID?crypto.randomUUID():'id-'+Math.random().toString(36).slice(2)+Date.now());
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const nowISO=()=>new Date().toISOString();
 const pad=n=>String(n).padStart(2,'0');
 const todayLocal=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;};
@@ -1222,7 +1260,7 @@ function idbClear(store){return new Promise((res,rej)=>{const t=_db.transaction(
 //              null = explicitly "No location", string = a chosen spot id.
 // form.coords + form.locKind ('gps'|'pin') hold an un-saved GPS/pin location.
 const state={meta:null,species:[],spots:[],sightings:[],
-  form:{speciesId:null,spotId:undefined,coords:null,locKind:null,placeName:null,dateISO:todayLocal(),timeOfDay:null,exactTime:null,count:null,notes:''},
+  form:{speciesId:null,spotId:undefined,coords:null,locKind:null,placeName:null,dateISO:todayLocal(),timeOfDay:null,exactTime:null,count:null,notes:'',photos:[]},
   editingId:null,journalWindow:60,searchTerm:''};
 
 /* ---------------- moon phase (§9.2) ---------------- */
@@ -1286,6 +1324,7 @@ async function init(){
   renderLog();
   initSW();
   processGeocodeQueue();   // backfill any place names that couldn't resolve offline
+  processWeatherQueue();   // backfill weather for anything logged offline
 }
 function showFatal(msg){
   document.getElementById('app').innerHTML=
@@ -1330,7 +1369,7 @@ function renderLog(){
   $('#exactTimeWrap').style.display=f.exactTime?'block':'none';
   $('#editBanner').style.display=state.editingId?'flex':'none';
   $('#saveBtn').textContent=state.editingId?'Update sighting':'Save sighting';
-  updatePlaceName();
+  updatePlaceName();renderPhotoThumbs();
 }
 function speciesCell(sp){
   const c=el('button',{class:'sp-cell'+(state.form.speciesId===sp.id?' sel':''),type:'button',
@@ -1437,57 +1476,80 @@ async function saveSighting(){
 async function _saveSighting(f){
   const sp=speciesById(f.speciesId);
   const spot=f.spotId?spotById(f.spotId):null;
-  let location;
-  if(spot){location={kind:'spot',spotId:spot.id,lat:spot.lat??null,lng:spot.lng??null,
+  let loc;   // NB: do NOT name this `location` — it shadows window.location.
+  if(spot){loc={kind:'spot',spotId:spot.id,lat:spot.lat??null,lng:spot.lng??null,
     placeName:(f.placeName!=null?f.placeName:spot.name)};}
-  else if(f.coords){location={kind:(f.locKind||'pin'),spotId:null,lat:f.coords.lat,lng:f.coords.lng,
+  else if(f.coords){loc={kind:(f.locKind||'pin'),spotId:null,lat:f.coords.lat,lng:f.coords.lng,
     placeName:(f.placeName!=null?f.placeName:null)};}
-  else if(f.placeName){location={kind:'none',spotId:null,lat:null,lng:null,placeName:f.placeName};}
-  else{location={kind:'none',spotId:null,lat:null,lng:null,placeName:null};}
+  else if(f.placeName){loc={kind:'none',spotId:null,lat:null,lng:null,placeName:f.placeName};}
+  else{loc={kind:'none',spotId:null,lat:null,lng:null,placeName:null};}
   const moon=computeMoon(f.dateISO,f.exactTime);
+  const formPhotos=f.photos||[];                 // in-memory {id,thumb,full,width,height,persisted}
+  const photoIds=formPhotos.map(p=>p.id);
+  const prevPhotoIds=(state.editingId&&state.sightings.find(s=>s.id===state.editingId)||{}).photoIds||[];
   let rec;
   if(state.editingId){
     rec=state.sightings.find(s=>s.id===state.editingId);
+    const dateChanged=rec.dateISO!==f.dateISO||rec.exactTime!==f.exactTime;
+    const locChanged=JSON.stringify(rec.location)!==JSON.stringify(loc);
     rec=Object.assign({},rec,{dateISO:f.dateISO,timeOfDay:f.timeOfDay,exactTime:f.exactTime,
-      speciesId:f.speciesId,location,count:f.count,notes:f.notes||'',moonPhase:moon,updatedAt:nowISO()});
+      speciesId:f.speciesId,location:loc,count:f.count,notes:f.notes||'',moonPhase:moon,
+      photoIds,updatedAt:nowISO()});
+    // re-fetch weather if the date or location changed
+    if((dateChanged||locChanged)&&loc.lat!=null){rec.weather=null;rec.weatherPending=true;}
   }else{
     rec={id:uuid(),dateISO:f.dateISO,timeOfDay:f.timeOfDay,exactTime:f.exactTime,speciesId:f.speciesId,
-      location,count:f.count,notes:f.notes||'',weather:null,weatherPending:false,moonPhase:moon,
-      photoIds:[],createdAt:nowISO(),updatedAt:nowISO()};
+      location:loc,count:f.count,notes:f.notes||'',weather:null,weatherPending:(loc.lat!=null),moonPhase:moon,
+      photoIds,createdAt:nowISO(),updatedAt:nowISO()};
   }
   try{await idbPut('sightings',rec);}
   catch(err){toast('Save failed — storage error',null);console.error(err);return;}
+  // persist newly-captured photos; delete any the user removed while editing
+  for(const p of formPhotos){if(!p.persisted){
+    await idbPut('photos',{id:p.id,sightingId:rec.id,thumb:p.thumb,full:p.full,width:p.width,height:p.height,createdAt:nowISO()});}}
+  for(const oldId of prevPhotoIds){if(!photoIds.includes(oldId))await idbDel('photos',oldId).catch(()=>{});}
   // update in-memory
   const i=state.sightings.findIndex(s=>s.id===rec.id);
   if(i>=0)state.sightings[i]=rec;else state.sightings.push(rec);
   // update spot recency
   if(spot){spot.lastUsedAt=nowISO();spot.useCount=(spot.useCount||0)+1;await idbPut('spots',spot);}
   // a GPS/pin location saved without a resolved name (offline) → queue backfill
-  if(location.lat!=null&&!location.placeName){await enqueueGeocode(rec.id);}
+  let enqueued=false;
+  if(loc.lat!=null&&!loc.placeName){await enqueueGeocode(rec.id);enqueued=true;}
   const wasEditing=state.editingId;
   resetForm();
   if(wasEditing){location.hash='#journal';toast('Updated ✓ '+sp.name,null);}
-  else{toast('Logged ✓ '+sp.name,{label:'Undo',fn:()=>undoSave(rec.id,spot?spot.id:null)});}
+  else{toast('Logged ✓ '+sp.name,{label:'Undo',fn:()=>undoSave(rec.id,spot?spot.id:null,rec.photoIds)});}
+  // kick enrichment (non-blocking): weather + any geocode backfill
+  if(rec.weatherPending)fetchWeatherFor(rec.id);
+  if(enqueued)processGeocodeQueue();
 }
-async function undoSave(id,spotId){
+async function undoSave(id,spotId,photoIds){
   await idbDel('sightings',id);
   state.sightings=state.sightings.filter(s=>s.id!==id);
+  if(photoIds)for(const pid of photoIds)await idbDel('photos',pid).catch(()=>{});
   if(spotId){const sp=spotById(spotId);if(sp&&sp.useCount>0){sp.useCount--;await idbPut('spots',sp);}}
   hideToast();renderLog();
 }
 function resetForm(){
   const keepSpot=orderedSpots()[0];
   state.editingId=null;state.searchTerm='';
+  revokePhotoUrls();
   state.form={speciesId:null,spotId:keepSpot?keepSpot.id:undefined,coords:null,locKind:null,placeName:null,
-    dateISO:todayLocal(),timeOfDay:null,exactTime:null,count:null,notes:''};
+    dateISO:todayLocal(),timeOfDay:null,exactTime:null,count:null,notes:'',photos:[]};
   renderLog();
 }
 
 /* ============================================================= *
  *  ADD SPECIES / NEW SPOT SHEETS                                *
  * ============================================================= */
-function openSheet(html){$('#sheetBody').innerHTML=html;$('#scrim').classList.add('show');$('#sheet').classList.add('show');}
-function closeSheet(){$('#scrim').classList.remove('show');$('#sheet').classList.remove('show');}
+// sheetCleanup: optional teardown (e.g. Leaflet mini-maps) that MUST run no
+// matter how the sheet is dismissed — including a scrim tap that routes through
+// the generic closeSheet. Whoever opens a sheet with a resource sets it.
+let sheetCleanup=null;
+function runSheetCleanup(){if(sheetCleanup){try{sheetCleanup();}catch(e){}sheetCleanup=null;}}
+function openSheet(html){runSheetCleanup();$('#sheetBody').innerHTML=html;$('#scrim').classList.add('show');$('#sheet').classList.add('show');}
+function closeSheet(){runSheetCleanup();$('#scrim').classList.remove('show');$('#sheet').classList.remove('show');}
 function openAddSpecies(){
   const opts=CATS.map(c=>`<option value="${c}">${CAT_LABEL[c]}</option>`).join('');
   openSheet(`<h2>Add species</h2><p class="sub">Custom species behave just like the defaults.</p>
@@ -1537,7 +1599,7 @@ let jState={rendered:0,curDay:null,items:[]};
 // Full render — only on data change / entering the tab / filter change.
 function renderJournal(){
   renderBackupNudge();renderFilterBar('journal');
-  const list=$('#journalList');list.innerHTML='';
+  const list=$('#journalList');list.innerHTML='';revokeJournalPhotoUrls();
   jState={rendered:0,curDay:null,items:journalItems()};
   if(!jState.items.length){
     list.appendChild(el('div',{class:'empty',html:
@@ -1566,10 +1628,14 @@ function entryRow(s){
   if(place)meta.push(esc(place));
   if(s.count!=null)meta.push(`<span class="count-badge">×${s.count}</span>`);
   let todGlyph=s.timeOfDay?`<svg class="ico"><use href="#${TOD_ICON[s.timeOfDay]}"/></svg>`:'';
+  const wx=s.weather?`<span class="wx-line" style="gap:4px">${weatherGlyph(s.weather.wmoCode)}</span>`:'';
   row.innerHTML=`<div class="ico-wrap">${speciesIcon(sp)}</div>
     <div class="body"><div class="nm">${esc(sp?sp.name:'Unknown')}</div>
-    <div class="meta">${meta.join(' ')} ${todGlyph}</div>
+    <div class="meta">${meta.join(' ')} ${todGlyph} ${wx}</div>
     ${s.notes?`<div class="snip">${esc(s.notes)}</div>`:''}</div>`;
+  if(s.photoIds&&s.photoIds.length){
+    const img=el('img',{class:'ephoto',alt:''});row.appendChild(img);loadRowThumb(img,s.photoIds[0]);
+  }
   return row;
 }
 // infinite scroll
@@ -1591,19 +1657,24 @@ function openDetail(id){
   const m=s.moonPhase;
   const waxing=m?m.phase<0.5:true;
   const timeStr=[s.timeOfDay?TOD_LABEL[s.timeOfDay]:null,s.exactTime||null].filter(Boolean).join(' · ')||'—';
+  let weatherHtml='—';
+  if(s.weather){const wt=weatherText(s.weather);weatherHtml=`<span class="wx-line">${weatherGlyph(s.weather.wmoCode)}<span>${esc(wt)}</span></span>`;}
+  else if(s.weatherPending&&s.location&&s.location.lat!=null)weatherHtml='<span class="small-note">fetching…</span>';
   const rows=[
     ['Date',fmtDate(s.dateISO)],
     ['Time',timeStr],
     ['Place',s.location&&s.location.placeName?esc(s.location.placeName):'—'],
     ['Count',s.count!=null?String(s.count):'—'],
-    ['Weather','—<span class="small-note"> (arrives next update)</span>'],
+    ['Weather',weatherHtml],
   ];
   const moonHtml=m?`<div class="moon-line">${moonGlyph(m.illumination,waxing)}<span>${esc(m.name)} · ${Math.round(m.illumination*100)}% lit</span></div>`:'—';
   const hasPt=s.location&&s.location.lat!=null&&s.location.lng!=null;
+  const hasPhotos=s.photoIds&&s.photoIds.length;
   openSheet(`
     <div class="spec-plate"><div class="ico-wrap">${speciesIcon(sp,'ico')}</div>
       <div><div class="nm">${esc(sp?sp.name:'Unknown')}</div>
       <div class="cat">${sp?esc(CAT_LABEL[sp.category]):''}</div></div></div>
+    ${hasPhotos?`<div class="photo-strip" id="detailPhotos"></div>`:''}
     <dl class="dl-detail">
       ${rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}
       <dt>Moon</dt><dd>${moonHtml}</dd>
@@ -1616,7 +1687,7 @@ function openDetail(id){
       <button class="act ghost" id="dClose">Close</button>
     </div>`);
   let detailMap=null;
-  const cleanup=()=>{if(detailMap){detailMap.remove();detailMap=null;}};
+  sheetCleanup=()=>{if(detailMap){detailMap.remove();detailMap=null;}revokeDetailPhotoUrls();};   // runs on any dismissal, incl. scrim tap
   if(hasPt&&typeof L!=='undefined'){
     setTimeout(()=>{
       detailMap=L.map('detailMap',{zoomControl:false,attributionControl:false,dragging:false,
@@ -1626,12 +1697,13 @@ function openDetail(id){
       setTimeout(()=>detailMap&&detailMap.invalidateSize(),60);
     },90);
   }
-  $('#dClose').onclick=()=>{cleanup();closeSheet();};
-  $('#dEdit').onclick=()=>{cleanup();loadIntoForm(s);closeSheet();location.hash='#log';};
+  wireDetailPhotos(s);
+  $('#dClose').onclick=closeSheet;
+  $('#dEdit').onclick=async()=>{closeSheet();await loadIntoForm(s);location.hash='#log';};
   let armed=false;const del=$('#dDelete');
   del.onclick=async()=>{
     if(!armed){armed=true;del.textContent='Tap again to delete';return;}
-    cleanup();await deleteSighting(s.id);closeSheet();renderJournal();
+    await deleteSighting(s.id);closeSheet();renderJournal();
   };
 }
 async function deleteSighting(id){
@@ -1640,16 +1712,20 @@ async function deleteSighting(id){
   await idbDel('sightings',id);
   state.sightings=state.sightings.filter(x=>x.id!==id);
 }
-function loadIntoForm(s){
-  state.editingId=s.id;state.searchTerm='';
+async function loadIntoForm(s){
+  state.editingId=s.id;state.searchTerm='';revokePhotoUrls();
   const loc=s.location||{};
   const coordKind=(loc.kind==='gps'||loc.kind==='pin')&&loc.lat!=null&&loc.lng!=null;
+  // pull existing photos into the form as already-persisted entries
+  const photos=[];
+  for(const pid of(s.photoIds||[])){const p=await idbGet('photos',pid);
+    if(p)photos.push({id:p.id,thumb:p.thumb,full:p.full,width:p.width,height:p.height,persisted:true});}
   state.form={speciesId:s.speciesId,
     spotId:loc.spotId?loc.spotId:null,
     coords:coordKind?{lat:loc.lat,lng:loc.lng}:null,
     locKind:coordKind?loc.kind:null,
     placeName:loc.placeName!=null?loc.placeName:null,
-    dateISO:s.dateISO,timeOfDay:s.timeOfDay,exactTime:s.exactTime,count:s.count,notes:s.notes||''};
+    dateISO:s.dateISO,timeOfDay:s.timeOfDay,exactTime:s.exactTime,count:s.count,notes:s.notes||'',photos};
   renderLog();
 }
 
@@ -1930,13 +2006,22 @@ function wireUI(){
   $('#countPlus').onclick=()=>{state.form.count=(state.form.count==null?1:state.form.count+1);renderCount();};
   $('#placeNameInput').oninput=e=>{const v=e.target.value;state.form.placeName=v.trim()===''?null:v;};
   const ss=$('#showSpots');if(ss)ss.onchange=refreshMap;
+  const pi=$('#photoInput');if(pi)pi.onchange=async e=>{await addPhotos(e.target.files);e.target.value='';};
+  $('#zoom').onclick=closeZoom;
   measureTopbar();window.addEventListener('resize',measureTopbar);window.addEventListener('orientationchange',()=>setTimeout(measureTopbar,150));
-  window.addEventListener('online',()=>{processGeocodeQueue();});
+  window.addEventListener('online',()=>{processGeocodeQueue();processWeatherQueue();});
   setupJournalObserver();
 }
-// Sticky day-headers must sit just below the sticky topbar; its height varies
-// with the safe-area inset, so measure it into a CSS custom property.
-function measureTopbar(){const t=$('.topbar');if(t)document.documentElement.style.setProperty('--topbar-h',t.offsetHeight+'px');}
+// Sticky day-headers must sit below BOTH the sticky topbar and the sticky
+// filter summary; both heights vary (safe-area / presence), so measure them.
+function measureTopbar(){
+  const t=$('.topbar');if(t)document.documentElement.style.setProperty('--topbar-h',t.offsetHeight+'px');
+  measureFilter();
+}
+function measureFilter(){
+  const fs=$('#filterBar-journal .filter-summary');
+  document.documentElement.style.setProperty('--filter-h',fs?fs.offsetHeight+'px':'0px');
+}
 
 /* ============================================================= *
  *  PHASE 2 — shared filters, geocoding, GPS, pin-drop, map      *
@@ -1959,7 +2044,10 @@ function applyFilters(list){
   });
 }
 function currentTab(){return(location.hash||'#log').replace('#','').split('/')[0];}
-function refreshActiveFilterView(){currentTab()==='map'?refreshMap():renderJournal();}
+function refreshActiveFilterView(){
+  if(currentTab()==='map'){mapFitted=false;refreshMap();}  // refit to the newly-visible set
+  else{state.journalWindow=60;renderJournal();}
+}
 function clearFilters(){filters.species.clear();filters.categories.clear();filters.spotId=null;filters.from='';filters.to='';refreshActiveFilterView();}
 function renderFilterBar(which){
   const box=$('#filterBar-'+which);if(!box)return;
@@ -1969,6 +2057,7 @@ function renderFilterBar(which){
     onclick:()=>{filtersOpen=!filtersOpen;renderFilterBar(which);}},[`Filters${n?` · ${n}`:''} ${filtersOpen?'▴':'▾'}`]));
   if(n)summary.appendChild(el('button',{class:'act ghost',style:'min-height:38px',onclick:clearFilters},['Clear']));
   box.appendChild(summary);
+  if(which==='journal')measureFilter();
   if(!filtersOpen)return;
   const panel=el('div',{class:'filter-panel'});
   const toggleSet=(set,val)=>{set.has(val)?set.delete(val):set.add(val);refreshActiveFilterView();};
@@ -2014,13 +2103,17 @@ async function reverseGeocode(lat,lng){
   const name=[place,region].filter(Boolean).join(', ');
   return name||(j.display_name?j.display_name.split(',').slice(0,2).join(',').trim():null);
 }
-let searchTimer=null;
+let searchTimer=null,searchSeq=0;
 function debounceSearch(q,cb){
   clearTimeout(searchTimer);
-  searchTimer=setTimeout(async()=>{           // ≥1s throttle per Nominatim policy
+  const seq=++searchSeq;                       // ignore stale (out-of-order) responses
+  searchTimer=setTimeout(async()=>{            // ≥1s throttle per Nominatim policy
     try{const r=await fetch(`${NOMINATIM}/search?format=jsonv2&q=${encodeURIComponent(q)}&limit=5`,{headers:{'Accept':'application/json'}});
-      if(!r.ok)return cb([]);const j=await r.json();cb(j.map(x=>({name:x.display_name,lat:+x.lat,lng:+x.lon})));}
-    catch(e){cb([]);}
+      if(seq!==searchSeq)return;               // a newer query superseded this one
+      if(!r.ok)return cb([]);const j=await r.json();
+      if(seq!==searchSeq)return;
+      cb(j.map(x=>({name:x.display_name,lat:+x.lat,lng:+x.lon})));}
+    catch(e){if(seq===searchSeq)cb([]);}
   },1100);
 }
 // Retry queue: sighting ids awaiting a reverse-geocoded place name (offline at save).
@@ -2029,18 +2122,25 @@ async function enqueueGeocode(sightingId){
   const q=new Set(geoQueue());q.add(sightingId);
   state.meta.settings.geoQueue=[...q];await idbPut('meta',state.meta);
 }
+let geoQueueRunning=false;
 async function processGeocodeQueue(){
-  if(!navigator.onLine)return;const q=geoQueue();if(!q.length)return;
-  const remaining=[];
-  for(const id of q){
-    const s=state.sightings.find(x=>x.id===id);
-    if(!s||!s.location||s.location.lat==null||s.location.placeName){continue;}
-    try{const nm=await reverseGeocode(s.location.lat,s.location.lng);
-      if(nm){s.location.placeName=nm;await idbPut('sightings',s);}else remaining.push(id);}
-    catch(e){remaining.push(id);}
-  }
-  state.meta.settings.geoQueue=remaining;await idbPut('meta',state.meta);
-  if(currentTab()==='journal')renderJournal();if(currentTab()==='map')refreshMap();
+  if(geoQueueRunning||!navigator.onLine)return;
+  const q=geoQueue();if(!q.length)return;
+  geoQueueRunning=true;
+  const remaining=[];let changed=false;let first=true;
+  try{
+    for(const id of q){
+      const s=state.sightings.find(x=>x.id===id);
+      if(!s||!s.location||s.location.lat==null||s.location.placeName){continue;}
+      if(!first)await sleep(1100);            // stay under Nominatim's 1 req/sec
+      first=false;
+      try{const nm=await reverseGeocode(s.location.lat,s.location.lng);
+        if(nm){s.location.placeName=nm;await idbPut('sightings',s);changed=true;}else remaining.push(id);}
+      catch(e){remaining.push(id);}
+    }
+    state.meta.settings.geoQueue=remaining;await idbPut('meta',state.meta);
+  }finally{geoQueueRunning=false;}
+  if(changed){if(currentTab()==='journal')renderJournal();if(currentTab()==='map')refreshMap();}
 }
 
 /* ---- GPS chip (§9.4) ---- */
@@ -2060,6 +2160,10 @@ function useCurrentLocation(){
 
 /* ---- pin-drop sheet (§7.1/§9.5) ---- */
 let pinMap=null,pinMarker=null,pinLatLng=null;
+// Custom pin icon (divIcon) — the default Leaflet marker is a PNG whose path
+// 404s with inlined CSS and would fail offline anyway.
+function pinIcon(){return L.divIcon({html:`<div class="fj-marker fj-pin">◉</div>`,className:'',iconSize:[30,30],iconAnchor:[15,15]});}
+function setPinMarker(latlng){if(pinMarker)pinMarker.setLatLng(latlng);else pinMarker=L.marker(latlng,{icon:pinIcon()}).addTo(pinMap);}
 function openPinDrop(){
   const start=state.form.coords;
   openSheet(`<h2>Drop a pin</h2><p class="sub">Tap the map to place a point, or search for a place.</p>
@@ -2067,19 +2171,16 @@ function openPinDrop(){
     <div id="pinMap"></div><div id="pinNotice"></div>
     <div class="btnrow" style="margin-top:12px"><button class="act" id="pinUse" disabled>Use this point</button>
       <button class="act ghost" id="pinCancel">Cancel</button></div>`);
-  const cleanup=()=>{if(pinMap){pinMap.remove();pinMap=null;}pinMarker=null;};
-  $('#pinCancel').onclick=()=>{cleanup();closeSheet();};
+  sheetCleanup=()=>{if(pinMap){pinMap.remove();pinMap=null;}pinMarker=null;};
+  $('#pinCancel').onclick=closeSheet;
   if(typeof L==='undefined'){$('#pinNotice').innerHTML='<div class="warn-banner"><span>Map library unavailable.</span></div>';return;}
   pinLatLng=start?L.latLng(start.lat,start.lng):null;
   setTimeout(()=>{
     if(pinMap)pinMap.remove();
     pinMap=L.map('pinMap',{zoomControl:true}).setView(pinLatLng||[37.1,-122.08],pinLatLng?14:11);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(pinMap);
-    pinMarker=pinLatLng?L.marker(pinLatLng).addTo(pinMap):null;
-    if(pinLatLng)$('#pinUse').disabled=false;
-    pinMap.on('click',e=>{pinLatLng=e.latlng;
-      if(pinMarker)pinMarker.setLatLng(e.latlng);else pinMarker=L.marker(e.latlng).addTo(pinMap);
-      $('#pinUse').disabled=false;});
+    pinMarker=null;if(pinLatLng){setPinMarker(pinLatLng);$('#pinUse').disabled=false;}
+    pinMap.on('click',e=>{pinLatLng=e.latlng;setPinMarker(e.latlng);$('#pinUse').disabled=false;});
     setTimeout(()=>pinMap.invalidateSize(),60);
   },90);
   $('#pinSearch').addEventListener('input',e=>{
@@ -2090,8 +2191,7 @@ function openPinDrop(){
       box.innerHTML='';
       if(!res.length){box.innerHTML='<div class="muted">No matches.</div>';return;}
       res.forEach(r=>box.appendChild(el('div',{onclick:()=>{
-        pinLatLng=L.latLng(r.lat,r.lng);
-        if(pinMarker)pinMarker.setLatLng(pinLatLng);else pinMarker=L.marker(pinLatLng).addTo(pinMap);
+        pinLatLng=L.latLng(r.lat,r.lng);setPinMarker(pinLatLng);
         pinMap.setView(pinLatLng,14);$('#pinUse').disabled=false;
         box.innerHTML='';$('#pinSearch').value=r.name.split(',').slice(0,2).join(', ');
       }},[r.name])));
@@ -2101,7 +2201,7 @@ function openPinDrop(){
     if(!pinLatLng)return;
     const f=state.form,lat=pinLatLng.lat,lng=pinLatLng.lng;
     f.coords={lat,lng};f.locKind='pin';f.spotId=null;f.placeName=null;
-    cleanup();closeSheet();renderSpotChips();updatePlaceName();
+    closeSheet();renderSpotChips();updatePlaceName();
     if(navigator.onLine){try{const nm=await reverseGeocode(lat,lng);if(nm&&f.coords&&f.coords.lat===lat){f.placeName=nm;updatePlaceName();}}catch(e){}}
   };
 }
@@ -2109,11 +2209,13 @@ function openPinDrop(){
 /* ---- Map screen (§7.3) ---- */
 let map=null,markerLayer=null,spotLayer=null,tileLayer=null,tileErrorShown=false,mapReady=false,mapFitted=false;
 function initMap(){
-  if(mapReady||typeof L==='undefined')return;
+  if(mapReady)return;
+  if(typeof L==='undefined'){$('#mapNotice').innerHTML='<div class="warn-banner"><span>Map library failed to load. Journal &amp; entry still work; reinstall to restore the map.</span></div>';return;}
   map=L.map('leafletMap',{zoomControl:true,attributionControl:true}).setView([37.1,-122.08],11);
   tileLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'});
   tileLayer.on('tileerror',()=>{if(!tileErrorShown){tileErrorShown=true;
     $('#mapNotice').innerHTML='<div class="warn-banner"><span>Map tiles unavailable offline — sightings still shown by position.</span></div>';}});
+  tileLayer.on('tileload',()=>{if(tileErrorShown){tileErrorShown=false;$('#mapNotice').innerHTML='';}}); // clear once tiles return
   tileLayer.addTo(map);
   markerLayer=L.markerClusterGroup?L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:44,
     iconCreateFunction:c=>L.divIcon({html:`<div class="fj-cluster">${c.getChildCount()}</div>`,className:'',iconSize:[34,34]})}):L.layerGroup();
@@ -2154,6 +2256,153 @@ function refreshMap(){
   const c=$('#mapCount');if(c)c.textContent=`${pts.length} shown${noLoc>0?` · ${noLoc} without location`:''}`;
   if(bounds.length&&!mapFitted){try{map.fitBounds(bounds,{padding:[42,42],maxZoom:14});mapFitted=true;}catch(e){}}
   setTimeout(()=>{if(map)map.invalidateSize();},60);
+}
+
+/* ============================================================= *
+ *  PHASE 3 — weather, photos, enrichment                        *
+ * ============================================================= */
+
+/* ---- weather — Open-Meteo (§9.1) ---- */
+const WMO={0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Rime fog',
+  51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',56:'Freezing drizzle',57:'Freezing drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',
+  71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',
+  80:'Rain showers',81:'Rain showers',82:'Violent showers',85:'Snow showers',86:'Snow showers',
+  95:'Thunderstorm',96:'Thunderstorm w/ hail',99:'Thunderstorm w/ hail'};
+function wmoCondition(c){return WMO[c]!=null?WMO[c]:'—';}
+function weatherGlyphId(c){
+  if(c===0||c===1)return'wx-sun';
+  if(c===2)return'wx-partly';
+  if(c===3)return'wx-cloud';
+  if(c===45||c===48)return'wx-fog';
+  if((c>=51&&c<=67)||(c>=80&&c<=82))return'wx-rain';
+  if((c>=71&&c<=77)||(c>=85&&c<=86))return'wx-snow';
+  if(c>=95)return'wx-storm';
+  return'wx-cloud';
+}
+function weatherGlyph(c){return `<svg class="ico"><use href="#${weatherGlyphId(c)}"/></svg>`;}
+function weatherText(w){
+  if(!w)return null;
+  const unit=(state.meta&&state.meta.settings&&state.meta.settings.units)||'imperial';
+  const t=unit==='metric'?`${w.tempC}°C`:`${w.tempF}°F`;
+  return `${t}, ${w.condition}`;
+}
+function todMidHour(tod){return {morning:9,afternoon:14,evening:18,night:23}[tod]||12;}
+async function fetchWeatherFor(id){
+  if(!navigator.onLine)return;                    // stays pending; queue retries
+  const s=state.sightings.find(x=>x.id===id);
+  if(!s)return;
+  if(!s.location||s.location.lat==null){if(s.weatherPending){s.weatherPending=false;await idbPut('sightings',s);}return;}
+  const lat=s.location.lat,lng=s.location.lng;
+  let hh=12;if(s.exactTime)hh=+s.exactTime.split(':')[0];else if(s.timeOfDay)hh=todMidHour(s.timeOfDay);
+  const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),6000);
+  try{
+    let w=null;
+    if(s.dateISO===todayLocal()){
+      const u=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,precipitation,weather_code&timezone=auto`;
+      const r=await fetch(u,{signal:ctrl.signal});const j=await r.json();const cur=j.current;
+      if(cur&&cur.temperature_2m!=null){const C=cur.temperature_2m;
+        w={tempC:Math.round(C),tempF:Math.round(C*9/5+32),condition:wmoCondition(cur.weather_code),
+          wmoCode:cur.weather_code,precipMm:cur.precipitation??null,source:'open-meteo',fetchedAt:nowISO()};}
+    }else{
+      const u=`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${s.dateISO}&end_date=${s.dateISO}&hourly=temperature_2m,precipitation,weather_code&timezone=auto`;
+      const r=await fetch(u,{signal:ctrl.signal});const j=await r.json();const H=j.hourly;
+      if(H&&H.time&&H.time.length){
+        let idx=H.time.findIndex(t=>t.endsWith(`T${pad(hh)}:00`));if(idx<0)idx=Math.min(hh,H.time.length-1);
+        const C=H.temperature_2m[idx],code=H.weather_code[idx];
+        if(C!=null)w={tempC:Math.round(C),tempF:Math.round(C*9/5+32),condition:wmoCondition(code),
+          wmoCode:code,precipMm:H.precipitation?H.precipitation[idx]:null,source:'open-meteo',fetchedAt:nowISO()};}
+    }
+    clearTimeout(to);
+    if(w){s.weather=w;s.weatherPending=false;delete s.weatherTries;await idbPut('sightings',s);
+      if(currentTab()==='journal')renderJournal();}
+    else{await bumpWeatherTries(s);}
+  }catch(e){clearTimeout(to);await bumpWeatherTries(s);}
+}
+async function bumpWeatherTries(s){                // cap retries so it doesn't loop forever
+  s.weatherTries=(s.weatherTries||0)+1;
+  if(s.weatherTries>=6){s.weatherPending=false;}
+  await idbPut('sightings',s);
+}
+let weatherQueueRunning=false;
+async function processWeatherQueue(){
+  if(weatherQueueRunning||!navigator.onLine)return;
+  const pending=state.sightings.filter(s=>s.weatherPending&&s.location&&s.location.lat!=null);
+  if(!pending.length)return;
+  weatherQueueRunning=true;
+  try{for(const s of pending){await fetchWeatherFor(s.id);await sleep(350);}}
+  finally{weatherQueueRunning=false;}
+}
+
+/* ---- photos (§9.3) ---- */
+let photoUrls=[];
+function revokePhotoUrls(){photoUrls.forEach(u=>{try{URL.revokeObjectURL(u);}catch(e){}});photoUrls=[];}
+async function compressImage(file){
+  let bmp;
+  try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'});}
+  catch(e){bmp=await createImageBitmap(file);}
+  const draw=(maxEdge,q)=>{
+    const scale=Math.min(1,maxEdge/Math.max(bmp.width,bmp.height));
+    const cw=Math.max(1,Math.round(bmp.width*scale)),ch=Math.max(1,Math.round(bmp.height*scale));
+    const c=document.createElement('canvas');c.width=cw;c.height=ch;
+    c.getContext('2d').drawImage(bmp,0,0,cw,ch);
+    return new Promise(res=>c.toBlob(b=>res({blob:b,w:cw,h:ch}),'image/jpeg',q));
+  };
+  const full=await draw(1280,0.72);
+  const thumb=await draw(200,0.7);
+  if(bmp.close)bmp.close();
+  return {full:full.blob,thumb:thumb.blob,width:full.w,height:full.h};
+}
+async function addPhotos(files){
+  const arr=Array.from(files||[]).filter(f=>f.type&&f.type.startsWith('image/'));
+  if(!arr.length)return;
+  if(!state.form.photos)state.form.photos=[];
+  const box=$('#photoThumbs');
+  for(const file of arr){
+    const spin=el('div',{class:'thumb loading',html:'<div class="spin"></div>'});box.appendChild(spin);
+    try{const c=await compressImage(file);state.form.photos.push({id:uuid(),thumb:c.thumb,full:c.full,width:c.width,height:c.height,persisted:false});}
+    catch(e){console.error('photo compress failed',e);toast('Could not read that photo',null);}
+    spin.remove();renderPhotoThumbs();
+    await sleep(0);                                // yield so UI stays responsive
+  }
+}
+function renderPhotoThumbs(){
+  const box=$('#photoThumbs');if(!box)return;
+  revokePhotoUrls();box.innerHTML='';
+  (state.form.photos||[]).forEach((p,idx)=>{
+    const url=URL.createObjectURL(p.thumb);photoUrls.push(url);
+    const wrap=el('div',{class:'thumb'});
+    wrap.innerHTML=`<img src="${url}" alt="photo"><button class="thumb-x" type="button" aria-label="Remove photo">×</button>`;
+    wrap.querySelector('.thumb-x').onclick=()=>{state.form.photos.splice(idx,1);renderPhotoThumbs();};
+    box.appendChild(wrap);
+  });
+}
+
+/* ---- journal row thumbnail (lazy object URLs, revoked on full re-render) ---- */
+let journalPhotoUrls=[];
+function revokeJournalPhotoUrls(){journalPhotoUrls.forEach(u=>{try{URL.revokeObjectURL(u);}catch(e){}});journalPhotoUrls=[];}
+async function loadRowThumb(imgEl,photoId){
+  try{const p=await idbGet('photos',photoId);if(!p||!p.thumb||!imgEl.isConnected)return;
+    const url=URL.createObjectURL(p.thumb);journalPhotoUrls.push(url);imgEl.src=url;}catch(e){}
+}
+
+/* ---- photo zoom overlay ---- */
+function openZoom(url){$('#zoomImg').src=url;$('#zoom').classList.add('show');}
+function closeZoom(){$('#zoom').classList.remove('show');$('#zoomImg').src='';}
+
+/* ---- detail: weather + photo strip ---- */
+let detailPhotoUrls=[];
+function revokeDetailPhotoUrls(){detailPhotoUrls.forEach(u=>{try{URL.revokeObjectURL(u);}catch(e){}});detailPhotoUrls=[];}
+async function wireDetailPhotos(s){
+  const box=$('#detailPhotos');if(!box)return;
+  revokeDetailPhotoUrls();box.innerHTML='';
+  for(const pid of(s.photoIds||[])){
+    const p=await idbGet('photos',pid);if(!p||!p.full)continue;
+    const url=URL.createObjectURL(p.full);detailPhotoUrls.push(url);
+    const img=new Image();img.src=url;img.alt='sighting photo';
+    img.onclick=()=>openZoom(url);
+    box.appendChild(img);
+  }
 }
 
 /* ============================================================= *
