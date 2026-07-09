@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f1e4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Field Journal">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Field Journal — Phase 0</title>
+<style>
+  /* ---- Design tokens (§12.1) — established here, reused in later phases ---- */
+  :root {
+    --paper:      #f6f1e4;
+    --paper-2:    #efe7d3;
+    --ink:        #2b2117;
+    --ink-2:      #6b5a45;
+    --rule:       #cabd9f;
+    --rule-soft:  #ded2b6;
+    /* muted watercolor washes (browse views only, defined for later use) */
+    --wash-sage:      #b9c3a8;
+    --wash-terracotta:#cba38c;
+    --wash-slate:     #9fb0bd;
+    --wash-ochre:     #d8c38a;
+    /* muted semantic */
+    --good: #4f6b45;
+    --bad:  #9a4a3c;
+    --warn: #977a2e;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --serif: Georgia, "Times New Roman", "EB Garamond", serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.45;
+    -webkit-text-size-adjust: 100%;
+    padding:
+      env(safe-area-inset-top)
+      env(safe-area-inset-right)
+      env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+  }
+
+  .wrap { max-width: 640px; margin: 0 auto; padding: 18px 16px 40px; }
+
+  /* ---- Header ---- */
+  header { text-align: center; padding: 8px 0 14px; }
+  header h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 30px;
+    letter-spacing: 0.02em;
+    margin: 0 0 2px;
+  }
+  header .sub {
+    font-variant: small-caps;
+    letter-spacing: 0.14em;
+    color: var(--ink-2);
+    font-size: 12px;
+    margin: 0;
+  }
+  .version {
+    display: inline-block;
+    margin-top: 10px;
+    font-family: var(--serif);
+    font-size: 13px;
+    color: var(--ink-2);
+    border: 1px solid var(--rule);
+    padding: 3px 10px;
+  }
+  .rule { height: 1px; background: var(--rule); border: 0; margin: 14px 0; }
+  .rule.double {
+    height: 4px; background: none;
+    border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink);
+  }
+
+  /* ---- Update banner ---- */
+  #updateBanner {
+    display: none;
+    position: sticky; top: 8px; z-index: 20;
+    background: var(--ink); color: var(--paper);
+    padding: 10px 14px; margin-bottom: 12px;
+    border: 1px solid var(--ink);
+    align-items: center; justify-content: space-between; gap: 12px;
+    font-size: 14px;
+  }
+  #updateBanner.show { display: flex; }
+  #updateBanner button {
+    background: var(--paper); color: var(--ink);
+    border: 1px solid var(--paper); padding: 6px 12px;
+    font: inherit; font-size: 13px; cursor: pointer; border-radius: 2px;
+  }
+
+  /* ---- Cards ---- */
+  .card {
+    border: 1px solid var(--rule);
+    background: var(--paper-2);
+    padding: 14px;
+    margin: 12px 0;
+  }
+  .card h2 {
+    font-family: var(--serif);
+    font-size: 17px; margin: 0 0 2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card .desc { color: var(--ink-2); font-size: 13.5px; margin: 2px 0 12px; }
+
+  /* status pill */
+  .pill {
+    font-variant: small-caps; letter-spacing: 0.08em;
+    font-size: 11px; padding: 2px 9px; border: 1px solid var(--ink-2);
+    color: var(--ink-2); border-radius: 2px; white-space: nowrap;
+  }
+  .pill.pass { color: var(--good); border-color: var(--good); }
+  .pill.fail { color: var(--bad);  border-color: var(--bad);  }
+  .pill.manual { color: var(--warn); border-color: var(--warn); }
+
+  /* buttons — rectangular, thin ink border, paper fill (§12.3) */
+  button.act {
+    -webkit-appearance: none; appearance: none;
+    font-family: var(--sans); font-size: 15px;
+    background: var(--paper); color: var(--ink);
+    border: 1px solid var(--ink); border-radius: 3px;
+    padding: 11px 16px; min-height: 44px; cursor: pointer;
+    letter-spacing: 0.01em;
+  }
+  button.act:active { background: var(--ink); color: var(--paper); }
+  button.act:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  label.filebtn {
+    display: inline-flex; align-items: center; min-height: 44px;
+    padding: 11px 16px; border: 1px solid var(--ink); border-radius: 3px;
+    font-size: 15px; cursor: pointer; background: var(--paper);
+  }
+  label.filebtn input { display: none; }
+
+  .out {
+    margin-top: 12px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12.5px; line-height: 1.5;
+    background: var(--paper); border: 1px dashed var(--rule);
+    padding: 10px; white-space: pre-wrap; word-break: break-word;
+    color: var(--ink);
+  }
+  .out:empty { display: none; }
+  .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .thumbs img { width: 72px; height: 72px; object-fit: cover; border: 1px solid var(--ink-2); }
+
+  .envgrid { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13.5px; }
+  .envgrid dt { color: var(--ink-2); }
+  .envgrid dd { margin: 0; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; background: var(--ink-2); }
+  .dot.on { background: var(--good); } .dot.off { background: var(--bad); }
+
+  footer { text-align: center; color: var(--ink-2); font-size: 12px; margin-top: 22px; }
+  a { color: var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="updateBanner" role="status">
+    <span>A new version is available.</span>
+    <button id="updateBtn" type="button">Tap to update</button>
+  </div>
+
+  <header>
+    <h1>Field Journal</h1>
+    <p class="sub">Phase 0 · Deployment &amp; Capability Probe</p>
+    <div class="version" id="versionTag">v0.1.0</div>
+  </header>
+
+  <hr class="rule double">
+
+  <!-- Environment overview -->
+  <section class="card">
+    <h2>Environment</h2>
+    <p class="desc">Live status of the runtime this probe is running in.</p>
+    <dl class="envgrid">
+      <dt>Display mode</dt><dd id="envDisplay">—</dd>
+      <dt>Service worker</dt><dd id="envSW">—</dd>
+      <dt>Network</dt><dd id="envNet">—</dd>
+      <dt>Persisted storage</dt><dd id="envPersist">—</dd>
+      <dt>Storage estimate</dt><dd id="envEstimate">—</dd>
+    </dl>
+  </section>
+
+  <!-- Probe 1 -->
+  <section class="card" data-probe="install">
+    <h2>1 · Add to Home Screen <span class="pill" id="p-install">checking</span></h2>
+    <p class="desc" id="d-install">Launched from Safari? Use the Share menu → “Add to Home Screen,” then open the icon. This card turns green when the app is running in standalone mode.</p>
+  </section>
+
+  <!-- Probe 2 -->
+  <section class="card" data-probe="offline">
+    <h2>2 · Offline launch <span class="pill" id="p-offline">checking</span></h2>
+    <p class="desc">The service worker precaches the app shell so it opens with no network. To verify: keep this installed, enable Airplane Mode, then relaunch from the home-screen icon — it should still load.</p>
+    <div class="out" id="o-offline"></div>
+  </section>
+
+  <!-- Probe 3 -->
+  <section class="card" data-probe="idb">
+    <h2>3 · Data survives force-quit <span class="pill" id="p-idb">manual</span></h2>
+    <p class="desc">Write a record to IndexedDB, force-quit the app, relaunch, and confirm the write count and timestamp below are unchanged (i.e., it persisted).</p>
+    <div class="btnrow">
+      <button class="act" id="idbWrite" type="button">Write test record</button>
+      <button class="act" id="idbPersist" type="button">Request persistent storage</button>
+    </div>
+    <div class="out" id="o-idb"></div>
+  </section>
+
+  <!-- Probe 4 -->
+  <section class="card" data-probe="geo">
+    <h2>4 · Geolocation <span class="pill" id="p-geo">manual</span></h2>
+    <p class="desc">Tapping below should raise the location permission prompt and then resolve to coordinates.</p>
+    <div class="btnrow">
+      <button class="act" id="geoBtn" type="button">Get current location</button>
+    </div>
+    <div class="out" id="o-geo"></div>
+  </section>
+
+  <!-- Probe 5 -->
+  <section class="card" data-probe="file">
+    <h2>5 · Camera / photo library <span class="pill" id="p-file">manual</span></h2>
+    <p class="desc">Should present the native camera/library chooser (no <code>capture</code> attribute, so you get the choice). Selected images preview below.</p>
+    <div class="btnrow">
+      <label class="filebtn">Add photo(s)
+        <input type="file" id="fileInput" accept="image/*" multiple>
+      </label>
+    </div>
+    <div class="out" id="o-file"></div>
+    <div class="thumbs" id="t-file"></div>
+  </section>
+
+  <!-- Probe 6 -->
+  <section class="card" data-probe="download">
+    <h2>6 · Backup download / share sheet <span class="pill" id="p-download">manual</span></h2>
+    <p class="desc">Generates a JSON file via a blob download. On iOS this should raise the share sheet so you can save to Files / iCloud Drive.</p>
+    <div class="btnrow">
+      <button class="act" id="dlBtn" type="button">Download test backup</button>
+    </div>
+    <div class="out" id="o-download"></div>
+  </section>
+
+  <hr class="rule">
+  <footer>
+    Phase 0 skeleton. Next: Phase 1 — data layer, species seed &amp; the Log screen.<br>
+    Report which cards are green / red and we’ll continue.
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+
+/* Keep APP_VERSION in step with CACHE_VERSION in sw.js. */
+const APP_VERSION = 'v0.1.0';
+
+const $ = (id) => document.getElementById(id);
+const setPill = (name, state, text) => {
+  const el = $('p-' + name);
+  if (!el) return;
+  el.className = 'pill ' + (state || '');
+  el.textContent = text || state;
+};
+const nowISO = () => new Date().toISOString();
+const todayLocal = () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
+$('versionTag').textContent = APP_VERSION;
+
+/* ---------------- Environment ---------------- */
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+function refreshEnv() {
+  const standalone = isStandalone();
+  $('envDisplay').textContent = standalone ? 'standalone (installed)' : 'browser tab';
+
+  const online = navigator.onLine;
+  $('envNet').innerHTML = `<span class="dot ${online ? 'on' : 'off'}"></span>${online ? 'online' : 'offline'}`;
+
+  // Probe 1 status
+  if (standalone) { setPill('install', 'pass', 'installed'); $('d-install').textContent = 'Running in standalone mode — installed correctly.'; }
+  else { setPill('install', 'manual', 'in browser'); }
+}
+window.addEventListener('online', refreshEnv);
+window.addEventListener('offline', refreshEnv);
+window.matchMedia('(display-mode: standalone)').addEventListener?.('change', refreshEnv);
+
+/* ---------------- Service worker + update flow ---------------- */
+let refreshing = false;
+async function initSW() {
+  if (!('serviceWorker' in navigator)) {
+    $('envSW').innerHTML = '<span class="dot off"></span>unsupported';
+    setPill('offline', 'fail', 'no SW');
+    $('o-offline').textContent = 'Service workers are not supported in this browser.';
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.register('sw.js');
+    $('envSW').innerHTML = '<span class="dot on"></span>registered';
+
+    // Report cached shell state.
+    updateOfflineCard();
+
+    // If a worker is already waiting (update ready before this load), show banner.
+    if (reg.waiting && navigator.serviceWorker.controller) showUpdate(reg.waiting);
+
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdate(nw);
+        }
+        updateOfflineCard();
+      });
+    });
+
+    // Reload once the new worker takes control.
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+  } catch (err) {
+    $('envSW').innerHTML = '<span class="dot off"></span>failed';
+    setPill('offline', 'fail', 'SW error');
+    $('o-offline').textContent = 'Service worker registration failed: ' + err;
+  }
+}
+
+function showUpdate(worker) {
+  const banner = $('updateBanner');
+  banner.classList.add('show');
+  $('updateBtn').onclick = () => {
+    $('updateBtn').textContent = 'Updating…';
+    worker.postMessage({ type: 'SKIP_WAITING' });
+  };
+}
+
+async function updateOfflineCard() {
+  try {
+    const keys = await caches.keys();
+    const controlled = !!navigator.serviceWorker.controller;
+    if (controlled && keys.length) {
+      setPill('offline', 'pass', 'shell cached');
+      $('o-offline').textContent =
+        'App shell is cached (' + keys.join(', ') + ').\nController active — safe to test Airplane Mode relaunch.';
+    } else if (keys.length) {
+      setPill('offline', 'manual', 'reload once');
+      $('o-offline').textContent =
+        'Shell cached (' + keys.join(', ') + ') but this page is not yet controlled by the worker. Reload once, then test offline.';
+    } else {
+      setPill('offline', 'manual', 'caching…');
+      $('o-offline').textContent = 'Service worker is installing the cache…';
+    }
+  } catch (e) {
+    $('o-offline').textContent = 'Cache inspect failed: ' + e;
+  }
+}
+
+/* ---------------- IndexedDB probe ---------------- */
+const DB_NAME = 'fieldJournalProbe';
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('probe')) db.createObjectStore('probe', { keyPath: 'key' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbGet(db, key) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('probe', 'readonly').objectStore('probe').get(key);
+    tx.onsuccess = () => resolve(tx.result);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function idbPut(db, val) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('probe', 'readwrite');
+    tx.objectStore('probe').put(val);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbShow() {
+  try {
+    const db = await openDB();
+    const rec = await idbGet(db, 'probe');
+    if (rec) {
+      setPill('idb', 'pass', 'persisted');
+      $('o-idb').textContent =
+        'Found existing record:\n  writeCount: ' + rec.writeCount +
+        '\n  lastWriteAt: ' + rec.lastWriteAt +
+        '\n\nIf you just relaunched after a force-quit and these match your last write, persistence works.';
+    } else {
+      setPill('idb', 'manual', 'no record');
+      $('o-idb').textContent = 'No record yet — tap “Write test record,” then force-quit and relaunch.';
+    }
+  } catch (e) {
+    setPill('idb', 'fail', 'error');
+    $('o-idb').textContent = 'IndexedDB open/read failed: ' + e;
+  }
+}
+async function idbWrite() {
+  try {
+    const db = await openDB();
+    const prev = await idbGet(db, 'probe');
+    const rec = { key: 'probe', writeCount: (prev ? prev.writeCount : 0) + 1, lastWriteAt: nowISO() };
+    await idbPut(db, rec);
+    setPill('idb', 'pass', 'written');
+    $('o-idb').textContent =
+      'Wrote record:\n  writeCount: ' + rec.writeCount +
+      '\n  lastWriteAt: ' + rec.lastWriteAt +
+      '\n\nNow force-quit (swipe up) and relaunch — this card should still show these values.';
+  } catch (e) {
+    setPill('idb', 'fail', 'error');
+    $('o-idb').textContent = 'IndexedDB write failed: ' + e;
+  }
+}
+async function requestPersist() {
+  if (!navigator.storage || !navigator.storage.persist) {
+    $('o-idb').textContent += '\n\nnavigator.storage.persist() is unavailable here.';
+    return;
+  }
+  const granted = await navigator.storage.persist();
+  $('envPersist').textContent = granted ? 'granted' : 'best-effort (not granted)';
+  $('o-idb').textContent += '\n\nnavigator.storage.persist() → ' + granted;
+}
+async function showStorageInfo() {
+  if (navigator.storage && navigator.storage.persisted) {
+    try { $('envPersist').textContent = (await navigator.storage.persisted()) ? 'granted' : 'not yet'; }
+    catch { $('envPersist').textContent = 'unknown'; }
+  } else { $('envPersist').textContent = 'unsupported'; }
+
+  if (navigator.storage && navigator.storage.estimate) {
+    try {
+      const { usage, quota } = await navigator.storage.estimate();
+      const mb = (n) => (n / 1048576).toFixed(1) + ' MB';
+      $('envEstimate').textContent = mb(usage || 0) + ' used / ' + mb(quota || 0) + ' quota';
+    } catch { $('envEstimate').textContent = 'unavailable'; }
+  } else { $('envEstimate').textContent = 'unsupported'; }
+}
+
+/* ---------------- Geolocation probe ---------------- */
+function geoProbe() {
+  if (!('geolocation' in navigator)) {
+    setPill('geo', 'fail', 'unsupported');
+    $('o-geo').textContent = 'Geolocation API not available.';
+    return;
+  }
+  $('o-geo').textContent = 'Requesting location…';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      setPill('geo', 'pass', 'resolved');
+      const c = pos.coords;
+      $('o-geo').textContent =
+        'lat: ' + c.latitude.toFixed(6) +
+        '\nlng: ' + c.longitude.toFixed(6) +
+        '\naccuracy: ±' + Math.round(c.accuracy) + ' m';
+    },
+    (err) => {
+      setPill('geo', 'fail', 'denied/failed');
+      $('o-geo').textContent = 'Error (' + err.code + '): ' + err.message +
+        '\n(That’s fine as a convenience — spots are the primary mechanism.)';
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+/* ---------------- File / camera probe ---------------- */
+let objectUrls = [];
+function fileProbe(e) {
+  objectUrls.forEach(URL.revokeObjectURL);
+  objectUrls = [];
+  const container = $('t-file');
+  container.innerHTML = '';
+  const files = Array.from(e.target.files || []);
+  if (!files.length) { $('o-file').textContent = 'No files chosen.'; return; }
+  setPill('file', 'pass', files.length + ' chosen');
+  $('o-file').textContent = files.map((f) =>
+    f.name + '  ·  ' + f.type + '  ·  ' + (f.size / 1024).toFixed(0) + ' KB').join('\n');
+  files.forEach((f) => {
+    if (!f.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(f);
+    objectUrls.push(url);
+    const img = new Image();
+    img.src = url;
+    img.alt = f.name;
+    container.appendChild(img);
+  });
+}
+
+/* ---------------- Download / share-sheet probe ---------------- */
+function downloadProbe() {
+  const payload = {
+    app: 'Field Journal',
+    probe: 'download',
+    version: APP_VERSION,
+    generatedAt: nowISO(),
+    note: 'If you can see this in Files/iCloud, the backup export path works.'
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'field-journal-probe-' + todayLocal() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  setPill('download', 'pass', 'triggered');
+  $('o-download').textContent =
+    'Triggered download of "' + a.download + '".\nOn iOS this should raise the share sheet — save it to Files to confirm.';
+}
+
+/* ---------------- Wire up ---------------- */
+$('idbWrite').addEventListener('click', idbWrite);
+$('idbPersist').addEventListener('click', requestPersist);
+$('geoBtn').addEventListener('click', geoProbe);
+$('fileInput').addEventListener('change', fileProbe);
+$('dlBtn').addEventListener('click', downloadProbe);
+
+refreshEnv();
+showStorageInfo();
+idbShow();
+initSW();
+</script>
+</body>
+</html>
