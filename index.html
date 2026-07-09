@@ -256,6 +256,10 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
 .pin-results div:active{background:var(--paper-2);}
 
 /* ---- Phase 3: photos + weather ---- */
+.filebtn{display:inline-flex;align-items:center;min-height:44px;padding:11px 16px;border:1px solid var(--ink);
+  border-radius:3px;font-size:15px;cursor:pointer;background:var(--paper);color:var(--ink);}
+.filebtn:active{background:var(--ink);color:var(--paper);}
+.filebtn input{display:none;}
 .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
 .thumb{position:relative;width:74px;height:74px;border:1px solid var(--ink-2);border-radius:3px;overflow:hidden;background:var(--paper-3);}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -273,6 +277,58 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
 .zoom-overlay{position:fixed;inset:0;z-index:60;background:rgba(43,33,23,.92);display:none;align-items:center;justify-content:center;}
 .zoom-overlay.show{display:flex;}
 .zoom-overlay img{max-width:96vw;max-height:92vh;object-fit:contain;}
+
+/* ---- Phase 4: almanac ---- */
+.al-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;}
+.al-controls select{width:auto;min-width:130px;flex:1;}
+.year-pager{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--rule);border-radius:4px;}
+.year-pager button{width:40px;height:40px;background:var(--paper);border:0;font-size:18px;color:var(--ink);cursor:pointer;}
+.year-pager .yr{min-width:56px;text-align:center;font-family:var(--serif);}
+.heat-table{border:1px solid var(--rule);border-radius:4px;padding:8px 6px;overflow-x:auto;background:var(--paper-2);}
+.heat-row{display:flex;align-items:center;gap:2px;margin:1px 0;}
+.heat-mon{font-variant:small-caps;letter-spacing:.06em;font-size:10px;color:var(--ink-2);width:30px;flex:0 0 30px;text-align:right;padding-right:4px;}
+.heat-cell{width:9px;height:9px;flex:0 0 9px;border-radius:1px;background:var(--paper-3);cursor:default;}
+.heat-cell.has{cursor:pointer;}
+.heat-legend{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-2);margin-top:8px;justify-content:flex-end;}
+.heat-legend .heat-cell{cursor:default;}
+.day-list{margin-top:10px;}
+.al-title{font-family:var(--serif);font-size:17px;margin:14px 0 4px;}
+.al-svg{width:100%;height:auto;display:block;border:1px solid var(--rule);border-radius:4px;background:var(--paper-2);margin-top:8px;}
+.season-band{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;}
+.season-cell{border:1px solid var(--rule);border-radius:4px;padding:8px;text-align:center;background:var(--paper-2);}
+.season-cell .sv{font-family:var(--serif);font-size:22px;}
+.season-cell .sl{font-variant:small-caps;letter-spacing:.08em;font-size:11px;color:var(--ink-2);}
+/* field-notes page — sanctioned watercolor zone */
+.notes-page{position:relative;border:1px solid var(--rule);border-radius:4px;padding:16px 16px 18px;margin:14px 0;
+  background:var(--paper);overflow:hidden;}
+.notes-page::before{content:"";position:absolute;inset:0;opacity:.16;pointer-events:none;
+  background:radial-gradient(120% 90% at 15% 0%,var(--wash) 0%,transparent 60%);}
+.notes-page .np-head{font-family:var(--serif);font-variant:small-caps;letter-spacing:.08em;font-size:18px;
+  border-bottom:1px solid var(--rule);padding-bottom:6px;margin-bottom:8px;position:relative;}
+.notes-page p{position:relative;margin:8px 0;line-height:1.55;}
+.notes-page .np-lead{font-size:15.5px;}
+/* on this day */
+.otd-card{border:1px solid var(--rule);border-radius:4px;padding:10px 12px;margin:12px 0;background:var(--paper-2);
+  display:flex;gap:10px;align-items:flex-start;cursor:pointer;}
+.otd-card .ico{width:22px;height:22px;flex:0 0 auto;color:var(--ink-2);}
+.otd-card .otd-h{font-variant:small-caps;letter-spacing:.08em;font-size:11px;color:var(--ink-2);}
+.otd-card .otd-b{font-family:var(--serif);font-size:15px;}
+/* species plate (§7.5) */
+.plate-illus{border:2px double var(--ink);border-radius:4px;padding:20px;margin:4px 0 6px;text-align:center;position:relative;overflow:hidden;}
+.plate-illus::before{content:"";position:absolute;inset:0;opacity:.2;background:radial-gradient(80% 80% at 50% 40%,var(--wash) 0%,transparent 65%);}
+.plate-illus .ico{width:120px;height:120px;position:relative;}
+.plate-illus .emoji-ico{font-size:96px;position:relative;}
+.plate-cap{text-align:center;margin:6px 0 2px;}
+.plate-cap .pn{font-family:var(--serif);font-size:24px;}
+.plate-cap .pc{font-variant:small-caps;letter-spacing:.14em;font-size:12px;color:var(--ink-2);}
+.plate-cap .plno{font-variant:small-caps;letter-spacing:.14em;font-size:11px;color:var(--ink-3);margin-top:2px;}
+.stat-band{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:10px 0;margin:12px 0;}
+.stat-band .st{font-variant:small-caps;letter-spacing:.06em;font-size:11px;color:var(--ink-2);}
+.stat-band .sv{font-size:15px;}
+.specimen{border:1px solid var(--rule);border-radius:3px;padding:8px 10px;margin:6px 0;background:var(--paper-2);}
+.specimen .sd{font-variant:small-caps;letter-spacing:.08em;font-size:11px;color:var(--ink-2);}
+.specimen .sb{font-size:14px;margin-top:2px;}
+.link-species{cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:var(--rule);}
 </style>
 <style id="vendor-css">/* required styles */
 
@@ -1126,6 +1182,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <!-- ===== JOURNAL ===== -->
   <section id="screen-journal" class="screen">
     <div id="backupNudge"></div>
+    <div id="onThisDayJournal"></div>
     <div id="filterBar-journal" class="filter-bar"></div>
     <div id="journalList"></div>
     <div id="journalSentinel" style="height:1px"></div>
@@ -1142,11 +1199,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   <!-- ===== ALMANAC (placeholder) ===== -->
   <section id="screen-almanac" class="screen">
-    <div class="empty">
-      <svg class="ico"><use href="#ui-almanac"/></svg>
-      <p>The almanac awaits.</p>
-      <div class="small-note">Heatmaps, seasonal charts and field-notes come in a later update.</div>
+    <div id="onThisDayAlmanac"></div>
+    <div class="seg" id="almanacSeg">
+      <button data-al="heatmap" class="sel">Heatmap</button>
+      <button data-al="frequency">Frequency</button>
+      <button data-al="notes">Field Notes</button>
     </div>
+    <div id="almanacBody"></div>
   </section>
 </div>
 
@@ -1177,7 +1236,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <script>
 "use strict";
 /* Keep APP_VERSION in step with CACHE_VERSION in sw.js. */
-const APP_VERSION='v0.4.0';
+const APP_VERSION='v0.5.0';
 const SCHEMA_VERSION=1;
 
 /* ---------------- tiny helpers ---------------- */
@@ -1347,6 +1406,7 @@ function routeTo(hash){
   window.scrollTo(0,0);
   if(tab==='journal')renderJournal();
   if(tab==='map'){if(!mapReady)initMap();else refreshMap();setTimeout(()=>{if(map)map.invalidateSize();},90);}
+  if(tab==='almanac')renderAlmanac();
 }
 window.addEventListener('hashchange',()=>routeTo(location.hash));
 
@@ -1495,8 +1555,10 @@ async function _saveSighting(f){
     rec=Object.assign({},rec,{dateISO:f.dateISO,timeOfDay:f.timeOfDay,exactTime:f.exactTime,
       speciesId:f.speciesId,location:loc,count:f.count,notes:f.notes||'',moonPhase:moon,
       photoIds,updatedAt:nowISO()});
-    // re-fetch weather if the date or location changed
+    // re-fetch weather if the date or location changed; clear it if the location
+    // (and thus any coordinates) was removed entirely.
     if((dateChanged||locChanged)&&loc.lat!=null){rec.weather=null;rec.weatherPending=true;}
+    else if(locChanged&&loc.lat==null){rec.weather=null;rec.weatherPending=false;delete rec.weatherTries;}
   }else{
     rec={id:uuid(),dateISO:f.dateISO,timeOfDay:f.timeOfDay,exactTime:f.exactTime,speciesId:f.speciesId,
       location:loc,count:f.count,notes:f.notes||'',weather:null,weatherPending:(loc.lat!=null),moonPhase:moon,
@@ -1598,7 +1660,7 @@ function journalItems(){return applyFilters(sortedSightings());}
 let jState={rendered:0,curDay:null,items:[]};
 // Full render — only on data change / entering the tab / filter change.
 function renderJournal(){
-  renderBackupNudge();renderFilterBar('journal');
+  renderBackupNudge();renderOnThisDay('onThisDayJournal');renderFilterBar('journal');
   const list=$('#journalList');list.innerHTML='';revokeJournalPhotoUrls();
   jState={rendered:0,curDay:null,items:journalItems()};
   if(!jState.items.length){
@@ -1674,6 +1736,7 @@ function openDetail(id){
     <div class="spec-plate"><div class="ico-wrap">${speciesIcon(sp,'ico')}</div>
       <div><div class="nm">${esc(sp?sp.name:'Unknown')}</div>
       <div class="cat">${sp?esc(CAT_LABEL[sp.category]):''}</div></div></div>
+    <div style="text-align:center;margin:-2px 0 8px"><button class="act ghost" id="dPlate" style="min-height:34px;padding:5px 12px;font-size:13px">View species plate →</button></div>
     ${hasPhotos?`<div class="photo-strip" id="detailPhotos"></div>`:''}
     <dl class="dl-detail">
       ${rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}
@@ -1699,6 +1762,7 @@ function openDetail(id){
   }
   wireDetailPhotos(s);
   $('#dClose').onclick=closeSheet;
+  const dp=$('#dPlate');if(dp)dp.onclick=()=>{closeSheet();openSpeciesPlate(s.speciesId);};
   $('#dEdit').onclick=async()=>{closeSheet();await loadIntoForm(s);location.hash='#log';};
   let armed=false;const del=$('#dDelete');
   del.onclick=async()=>{
@@ -2008,6 +2072,7 @@ function wireUI(){
   const ss=$('#showSpots');if(ss)ss.onchange=refreshMap;
   const pi=$('#photoInput');if(pi)pi.onchange=async e=>{await addPhotos(e.target.files);e.target.value='';};
   $('#zoom').onclick=closeZoom;
+  $('#almanacSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;almanac.view=b.dataset.al;renderAlmanac();});
   measureTopbar();window.addEventListener('resize',measureTopbar);window.addEventListener('orientationchange',()=>setTimeout(measureTopbar,150));
   window.addEventListener('online',()=>{processGeocodeQueue();processWeatherQueue();});
   setupJournalObserver();
@@ -2288,40 +2353,54 @@ function weatherText(w){
   return `${t}, ${w.condition}`;
 }
 function todMidHour(tod){return {morning:9,afternoon:14,evening:18,night:23}[tod]||12;}
+function daysBetweenLocal(fromISO,toISO){return Math.round((parseLocal(toISO)-parseLocal(fromISO))/864e5);}
+function pickHourFromSeries(H,dateISO,hh){        // returns index into hourly arrays or -1
+  if(!H||!H.time||!H.time.length)return -1;
+  let idx=H.time.indexOf(`${dateISO}T${pad(hh)}:00`);
+  if(idx>=0)return idx;
+  const sameDate=[];for(let i=0;i<H.time.length;i++)if(H.time[i].startsWith(dateISO+'T'))sameDate.push(i);
+  if(!sameDate.length)return -1;
+  return sameDate[Math.min(hh,sameDate.length-1)];
+}
 async function fetchWeatherFor(id){
   if(!navigator.onLine)return;                    // stays pending; queue retries
-  const s=state.sightings.find(x=>x.id===id);
-  if(!s)return;
-  if(!s.location||s.location.lat==null){if(s.weatherPending){s.weatherPending=false;await idbPut('sightings',s);}return;}
-  const lat=s.location.lat,lng=s.location.lng;
-  let hh=12;if(s.exactTime)hh=+s.exactTime.split(':')[0];else if(s.timeOfDay)hh=todMidHour(s.timeOfDay);
+  const s0=state.sightings.find(x=>x.id===id);
+  if(!s0)return;
+  if(!s0.location||s0.location.lat==null){if(s0.weatherPending){s0.weatherPending=false;delete s0.weatherTries;await idbPut('sightings',s0);}return;}
+  const lat=s0.location.lat,lng=s0.location.lng,dateISO=s0.dateISO;
+  let hh=12;if(s0.exactTime)hh=+s0.exactTime.split(':')[0];else if(s0.timeOfDay)hh=todMidHour(s0.timeOfDay);
+  const daysAgo=daysBetweenLocal(dateISO,todayLocal());
   const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),6000);
+  let w=null,hardError=false;
   try{
-    let w=null;
-    if(s.dateISO===todayLocal()){
-      const u=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,precipitation,weather_code&timezone=auto`;
-      const r=await fetch(u,{signal:ctrl.signal});const j=await r.json();const cur=j.current;
-      if(cur&&cur.temperature_2m!=null){const C=cur.temperature_2m;
-        w={tempC:Math.round(C),tempF:Math.round(C*9/5+32),condition:wmoCondition(cur.weather_code),
-          wmoCode:cur.weather_code,precipMm:cur.precipitation??null,source:'open-meteo',fetchedAt:nowISO()};}
-    }else{
-      const u=`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${s.dateISO}&end_date=${s.dateISO}&hourly=temperature_2m,precipitation,weather_code&timezone=auto`;
-      const r=await fetch(u,{signal:ctrl.signal});const j=await r.json();const H=j.hourly;
-      if(H&&H.time&&H.time.length){
-        let idx=H.time.findIndex(t=>t.endsWith(`T${pad(hh)}:00`));if(idx<0)idx=Math.min(hh,H.time.length-1);
-        const C=H.temperature_2m[idx],code=H.weather_code[idx];
-        if(C!=null)w={tempC:Math.round(C),tempF:Math.round(C*9/5+32),condition:wmoCondition(code),
-          wmoCode:code,precipMm:H.precipitation?H.precipitation[idx]:null,source:'open-meteo',fetchedAt:nowISO()};}
+    // Within ~7 days (incl. today): forecast API with past_days hourly — the
+    // archive (ERA5) endpoint lags 2–5 days, which used to strand offline entries.
+    // Older than that: archive, which by then reliably has the data.
+    const url=(daysAgo<=7)
+      ? `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,precipitation,weather_code&past_days=7&forecast_days=1&timezone=auto`
+      : `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${dateISO}&end_date=${dateISO}&hourly=temperature_2m,precipitation,weather_code&timezone=auto`;
+    const r=await fetch(url,{signal:ctrl.signal});
+    if(!r.ok){hardError=true;}
+    else{
+      const j=await r.json();const H=j.hourly;const idx=pickHourFromSeries(H,dateISO,hh);
+      if(idx>=0&&H.temperature_2m[idx]!=null){const C=H.temperature_2m[idx],code=H.weather_code[idx];
+        w={tempC:Math.round(C),tempF:Math.round(C*9/5+32),condition:wmoCondition(code),wmoCode:code,
+          precipMm:H.precipitation?H.precipitation[idx]:null,source:'open-meteo',fetchedAt:nowISO()};}
+      // else: data not published yet — leave pending, retry later WITHOUT counting a try
     }
     clearTimeout(to);
-    if(w){s.weather=w;s.weatherPending=false;delete s.weatherTries;await idbPut('sightings',s);
-      if(currentTab()==='journal')renderJournal();}
-    else{await bumpWeatherTries(s);}
-  }catch(e){clearTimeout(to);await bumpWeatherTries(s);}
+  }catch(e){clearTimeout(to);hardError=true;}
+  // Re-find: an edit during the await may have replaced the array entry; writing
+  // s0 back would silently revert that edit. Bail if it's gone or already resolved.
+  const cur=state.sightings.find(x=>x.id===id);
+  if(!cur||!cur.weatherPending)return;
+  if(w){cur.weather=w;cur.weatherPending=false;delete cur.weatherTries;await idbPut('sightings',cur);
+    if(currentTab()==='journal')renderJournal();}
+  else if(hardError){await bumpWeatherTries(cur);}   // only hard errors (network/4xx/5xx) count toward the cap
 }
-async function bumpWeatherTries(s){                // cap retries so it doesn't loop forever
+async function bumpWeatherTries(s){                // cap hard-error retries so it doesn't loop forever
   s.weatherTries=(s.weatherTries||0)+1;
-  if(s.weatherTries>=6){s.weatherPending=false;}
+  if(s.weatherTries>=6){s.weatherPending=false;delete s.weatherTries;}
   await idbPut('sightings',s);
 }
 let weatherQueueRunning=false;
@@ -2386,23 +2465,247 @@ async function loadRowThumb(imgEl,photoId){
     const url=URL.createObjectURL(p.thumb);journalPhotoUrls.push(url);imgEl.src=url;}catch(e){}
 }
 
-/* ---- photo zoom overlay ---- */
-function openZoom(url){$('#zoomImg').src=url;$('#zoom').classList.add('show');}
-function closeZoom(){$('#zoom').classList.remove('show');$('#zoomImg').src='';}
+/* ---- photo zoom overlay (owns its own full-size object URL) ---- */
+let zoomUrl=null;
+function openZoom(url){if(zoomUrl)URL.revokeObjectURL(zoomUrl);zoomUrl=url;$('#zoomImg').src=url;$('#zoom').classList.add('show');}
+function closeZoom(){$('#zoom').classList.remove('show');$('#zoomImg').src='';if(zoomUrl){URL.revokeObjectURL(zoomUrl);zoomUrl=null;}}
+async function zoomPhoto(pid){const p=await idbGet('photos',pid);if(p&&p.full)openZoom(URL.createObjectURL(p.full));}
 
-/* ---- detail: weather + photo strip ---- */
+/* ---- detail: photo strip renders THUMBS; full is decoded only on tap ---- */
 let detailPhotoUrls=[];
 function revokeDetailPhotoUrls(){detailPhotoUrls.forEach(u=>{try{URL.revokeObjectURL(u);}catch(e){}});detailPhotoUrls=[];}
-async function wireDetailPhotos(s){
-  const box=$('#detailPhotos');if(!box)return;
+async function renderPhotoStrip(boxId,photoIds){
+  const box=$('#'+boxId);if(!box)return;
   revokeDetailPhotoUrls();box.innerHTML='';
-  for(const pid of(s.photoIds||[])){
-    const p=await idbGet('photos',pid);if(!p||!p.full)continue;
-    const url=URL.createObjectURL(p.full);detailPhotoUrls.push(url);
+  for(const pid of(photoIds||[])){
+    const p=await idbGet('photos',pid);if(!p||!p.thumb)continue;
+    const url=URL.createObjectURL(p.thumb);detailPhotoUrls.push(url);
     const img=new Image();img.src=url;img.alt='sighting photo';
-    img.onclick=()=>openZoom(url);
+    img.onclick=()=>zoomPhoto(pid);      // lazily fetch the full-size only when zoomed
     box.appendChild(img);
   }
+}
+function wireDetailPhotos(s){return renderPhotoStrip('detailPhotos',s.photoIds||[]);}
+
+/* ============================================================= *
+ *  PHASE 4 — Almanac: analytics, heatmap, charts, plates, notes *
+ * ============================================================= */
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const SEASONS=[['Winter',[12,1,2]],['Spring',[3,4,5]],['Summer',[6,7,8]],['Fall',[9,10,11]]];
+const monthOf=iso=>+iso.slice(5,7), yearOf=iso=>+iso.slice(0,4);
+function seasonOfMonth(m){for(const[n,ms]of SEASONS)if(ms.includes(m))return n;return'';}
+function freqByMonth(list){const a=Array(12).fill(0);list.forEach(s=>a[monthOf(s.dateISO)-1]++);return a;}
+function freqBySeason(list){const o={Winter:0,Spring:0,Summer:0,Fall:0};list.forEach(s=>o[seasonOfMonth(monthOf(s.dateISO))]++);return o;}
+function sightingYears(){return[...new Set(state.sightings.map(s=>yearOf(s.dateISO)))].sort((a,b)=>a-b);}
+function speciesSightings(id){return state.sightings.filter(s=>s.speciesId===id).sort((a,b)=>a.dateISO<b.dateISO?-1:(a.dateISO>b.dateISO?1:0));}
+function speciesStats(id){
+  const list=speciesSightings(id);if(!list.length)return null;
+  const fm=freqByMonth(list);const mostMonth=fm.indexOf(Math.max(...fm));
+  const spotCount={};list.forEach(s=>{const n=s.location&&s.location.placeName;if(n)spotCount[n]=(spotCount[n]||0)+1;});
+  let mostSpot=null,mx=0;for(const k in spotCount)if(spotCount[k]>mx){mx=spotCount[k];mostSpot=k;}
+  return{total:list.length,first:list[0].dateISO,last:list[list.length-1].dateISO,mostMonth,mostSpot,freq:fm};
+}
+function plateNumber(id){const s=[...state.species].sort((a,b)=>(a.createdAt||'')<(b.createdAt||'')?-1:1);const i=s.findIndex(x=>x.id===id);return i>=0?i+1:'—';}
+function speciesLink(id){const sp=speciesById(id);return `<span class="link-species" data-id="${id}">${esc(sp?sp.name:'Unknown')}</span>`;}
+function onThisDay(){const t=todayLocal(),md=t.slice(5),y=yearOf(t);
+  return state.sightings.filter(s=>s.dateISO.slice(5)===md&&yearOf(s.dateISO)<y);}
+
+/* ---- engraved inline SVG bar chart (§7.4b, no chart library) ---- */
+let chartSeq=0;
+function barChartSVG(values,labels,opts){
+  opts=opts||{};const W=opts.width||340,H=opts.height||150,pad={l:20,r:8,t:12,b:22};
+  const max=Math.max(1,...values),n=values.length,bw=(W-pad.l-pad.r)/n,pid='hatch'+(++chartSeq);
+  const bars=values.map((v,i)=>{
+    const bh=(H-pad.t-pad.b)*(v/max),x=pad.l+i*bw+bw*0.16,y=H-pad.b-bh,w=bw*0.68;
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${bh.toFixed(1)}" fill="url(#${pid})" stroke="#2b2117" stroke-width="0.7"/>`+
+      (v>0&&!opts.spark?`<text x="${(x+w/2).toFixed(1)}" y="${(y-2).toFixed(1)}" font-size="7" text-anchor="middle" fill="#6b5a45">${v}</text>`:'');
+  }).join('');
+  const xl=opts.spark?'':labels.map((l,i)=>`<text x="${(pad.l+i*bw+bw/2).toFixed(1)}" y="${H-pad.b+12}" font-size="7.5" text-anchor="middle" fill="#6b5a45" style="font-variant:small-caps">${esc(l)}</text>`).join('');
+  return `<svg class="al-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="bar chart">
+    <defs><pattern id="${pid}" width="4" height="4" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <rect width="4" height="4" fill="#f6f1e4"/><line x1="0" y1="0" x2="0" y2="4" stroke="#6b5a45" stroke-width="1"/></pattern></defs>
+    <line x1="${pad.l}" y1="${H-pad.b}" x2="${W-pad.r}" y2="${H-pad.b}" stroke="#2b2117" stroke-width="0.8"/>${bars}${xl}</svg>`;
+}
+
+const almanac={view:'heatmap',year:new Date().getFullYear(),hmSpecies:'',
+  freqSpecies:'',freqCategory:'',freqPerYear:false,freqYear:new Date().getFullYear()};
+function speciesOptionsHtml(sel){
+  const list=[...new Set(state.sightings.map(s=>s.speciesId))].map(speciesById).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name));
+  return `<option value="">All species</option>`+list.map(sp=>`<option value="${sp.id}"${sel===sp.id?' selected':''}>${esc(sp.name)}</option>`).join('');
+}
+function renderAlmanac(){
+  renderOnThisDay('onThisDayAlmanac');
+  $$('#almanacSeg button').forEach(b=>b.classList.toggle('sel',b.dataset.al===almanac.view));
+  if(almanac.view==='heatmap')renderHeatmap();
+  else if(almanac.view==='frequency')renderFrequency();
+  else renderFieldNotes();
+}
+/* a) year heatmap */
+function renderHeatmap(){
+  const A=almanac,body=$('#almanacBody');
+  const inYear=state.sightings.filter(s=>yearOf(s.dateISO)===A.year&&(!A.hmSpecies||s.speciesId===A.hmSpecies));
+  const perDay={};inYear.forEach(s=>{perDay[s.dateISO]=(perDay[s.dateISO]||0)+1;});
+  const max=Math.max(1,...Object.values(perDay));
+  const ink=c=>c?`rgba(43,33,23,${(0.18+0.82*(c/max)).toFixed(2)})`:'var(--paper-3)';
+  let rows='';
+  for(let m=1;m<=12;m++){const dim=new Date(A.year,m,0).getDate();let cells='';
+    for(let d=1;d<=dim;d++){const iso=`${A.year}-${pad(m)}-${pad(d)}`,c=perDay[iso]||0;
+      cells+=`<div class="heat-cell${c?' has':''}" data-iso="${iso}" title="${iso}: ${c}" style="background:${ink(c)}"></div>`;}
+    rows+=`<div class="heat-row"><span class="heat-mon">${MONTHS_SHORT[m-1]}</span>${cells}</div>`;}
+  body.innerHTML=`
+    <div class="al-controls">
+      <div class="year-pager"><button id="hmPrev" aria-label="Previous year">‹</button><span class="yr">${A.year}</span><button id="hmNext" aria-label="Next year">›</button></div>
+      <select id="hmSpecies" aria-label="Filter species">${speciesOptionsHtml(A.hmSpecies)}</select>
+    </div>
+    <div class="heat-table">${rows}</div>
+    <div class="heat-legend">less <span class="heat-cell" style="background:${ink(0)}"></span><span class="heat-cell" style="background:${ink(Math.ceil(max/3))}"></span><span class="heat-cell" style="background:${ink(Math.ceil(2*max/3))}"></span><span class="heat-cell" style="background:${ink(max)}"></span> more</div>
+    <div class="muted" style="margin-top:8px">${inYear.length} sighting${inYear.length!==1?'s':''} in ${A.year}${A.hmSpecies?' · '+esc(speciesById(A.hmSpecies).name):''}</div>
+    <div class="day-list" id="hmDayList"></div>`;
+  $('#hmPrev').onclick=()=>{A.year--;renderHeatmap();};
+  $('#hmNext').onclick=()=>{A.year++;renderHeatmap();};
+  $('#hmSpecies').onchange=e=>{A.hmSpecies=e.target.value;renderHeatmap();};
+  body.querySelectorAll('.heat-cell.has').forEach(c=>c.onclick=()=>{
+    const iso=c.dataset.iso,box=$('#hmDayList');
+    box.innerHTML=`<div class="al-title">${fmtDayHead(iso)}</div>`;
+    state.sightings.filter(s=>s.dateISO===iso&&(!A.hmSpecies||s.speciesId===A.hmSpecies)).forEach(s=>box.appendChild(entryRow(s)));
+    box.scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+}
+/* b) frequency by month + season */
+function renderFrequency(){
+  const A=almanac,body=$('#almanacBody'),years=sightingYears();
+  const catOpts=`<option value="">All categories</option>`+CATS.map(c=>`<option value="${c}"${A.freqCategory===c?' selected':''}>${CAT_LABEL[c]}</option>`).join('');
+  const list=state.sightings.filter(s=>{
+    if(A.freqSpecies&&s.speciesId!==A.freqSpecies)return false;
+    if(A.freqCategory){const sp=speciesById(s.speciesId);if(!sp||sp.category!==A.freqCategory)return false;}
+    if(A.freqPerYear&&yearOf(s.dateISO)!==A.freqYear)return false;
+    return true;});
+  const fm=freqByMonth(list),fs=freqBySeason(list);
+  const yearToggle=years.length?`<label class="chk" style="font-size:13px"><input type="checkbox" id="freqPY" ${A.freqPerYear?'checked':''}> per year</label>`+
+    (A.freqPerYear?`<div class="year-pager"><button id="fyPrev">‹</button><span class="yr">${A.freqYear}</span><button id="fyNext">›</button></div>`:''):'';
+  body.innerHTML=`
+    <div class="al-controls"><select id="freqSpecies" aria-label="Species">${speciesOptionsHtml(A.freqSpecies)}</select><select id="freqCategory" aria-label="Category">${catOpts}</select></div>
+    <div class="al-controls">${yearToggle}</div>
+    <div class="al-title">By month${A.freqPerYear?' · '+A.freqYear:(years.length>1?' · all years':'')}</div>
+    ${barChartSVG(fm,MONTHS_SHORT,{width:340,height:150})}
+    <div class="al-title">By season</div>
+    <div class="season-band">${SEASONS.map(([n])=>`<div class="season-cell"><div class="sv">${fs[n]}</div><div class="sl">${n}</div></div>`).join('')}</div>
+    <div class="muted" style="margin-top:10px">${list.length} sighting${list.length!==1?'s':''}</div>`;
+  $('#freqSpecies').onchange=e=>{A.freqSpecies=e.target.value;renderFrequency();};
+  $('#freqCategory').onchange=e=>{A.freqCategory=e.target.value;renderFrequency();};
+  const py=$('#freqPY');if(py)py.onchange=e=>{A.freqPerYear=e.target.checked;if(A.freqPerYear&&!years.includes(A.freqYear))A.freqYear=years[years.length-1];renderFrequency();};
+  const fp=$('#fyPrev');if(fp)fp.onclick=()=>{A.freqYear--;renderFrequency();};
+  const fnx=$('#fyNext');if(fnx)fnx.onclick=()=>{A.freqYear++;renderFrequency();};
+}
+/* c) field-notes summaries (templated, deterministic) */
+function categoryTint(list){const c={};list.forEach(s=>{const sp=speciesById(s.speciesId);if(sp)c[sp.category]=(c[sp.category]||0)+1;});
+  let best='plant',mx=-1;for(const k in c)if(c[k]>mx){mx=c[k];best=k;}return best;}
+function seededPick(arr,seed){return arr[Math.abs(Math.floor(seed))%arr.length];}
+function monthFacts(y,m,list){
+  const seed=y*13+m,ymPrefix=`${y}-${pad(m)}`,facts=[];
+  const counts={};list.forEach(s=>counts[s.speciesId]=(counts[s.speciesId]||0)+1);
+  const ids=Object.keys(counts);
+  // superlative
+  let topId=null,topN=0;for(const id in counts)if(counts[id]>topN){topN=counts[id];topId=id;}
+  if(topId&&topN>=3)facts.push({p:5,t:seededPick([
+    `The ${speciesLink(topId)} were having a moment — ${topN} sightings, the most of any species.`,
+    `No species turned up more than the ${speciesLink(topId)}: ${topN} sightings.`,
+    `${speciesLink(topId)} led the month with ${topN} sightings.`],seed)});
+  // firsts (new to journal, or first-since)
+  for(const id of ids){
+    const all=speciesSightings(id);
+    if(all[0]&&all[0].dateISO.slice(0,7)===ymPrefix)
+      facts.push({p:6,t:seededPick([`A new species for the journal: ${speciesLink(id)}.`,`First-ever record: ${speciesLink(id)}.`],seed+id.length)});
+    else{const prior=all.filter(s=>s.dateISO<ymPrefix+'-01');
+      if(prior.length){const last=prior[prior.length-1],gap=(y*12+m)-(yearOf(last.dateISO)*12+monthOf(last.dateISO));
+        if(gap>=4)facts.push({p:3,t:`Your first ${speciesLink(id)} since ${MONTHS[monthOf(last.dateISO)-1]}.`});}}
+  }
+  // time-of-day pattern
+  for(const id of ids){const sl=list.filter(s=>s.speciesId===id&&s.timeOfDay);
+    if(sl.length>=3){const tod=sl[0].timeOfDay;if(sl.every(s=>s.timeOfDay===tod))
+      facts.push({p:4,t:`Every ${speciesLink(id)} this month appeared in the ${tod}.`});}}
+  // weather-in-rain pattern (≥3 qualifying)
+  const withWx=list.filter(s=>s.weather);
+  if(withWx.length>=3){const rainy=withWx.filter(s=>(s.weather.precipMm>0)||/rain|drizzle|shower|thunder/i.test(s.weather.condition));
+    if(rainy.length>=3)facts.push({p:4,t:`${rainy.length} of ${withWx.length} sightings came in the wet.`});}
+  // prior-year comparison for top species
+  if(topId){const prevN=state.sightings.filter(s=>s.speciesId===topId&&yearOf(s.dateISO)===y-1&&monthOf(s.dateISO)===m).length;
+    if(prevN>0){const ratio=topN/prevN;
+      if(ratio>=2)facts.push({p:2,t:`Twice as many ${speciesLink(topId)} as last ${MONTHS[m-1]}.`});
+      else if(ratio<=0.5)facts.push({p:2,t:`Fewer ${speciesLink(topId)} than last ${MONTHS[m-1]} (${topN} vs ${prevN}).`});}}
+  return facts.sort((a,b)=>b.p-a.p).slice(0,3).map(f=>f.t);
+}
+function fieldNotePage(ym,list){
+  const[y,m]=ym.split('-').map(Number),wash=`var(--wash-${categoryTint(list)})`;
+  const nSpecies=new Set(list.map(s=>s.speciesId)).size;
+  const lead=`In ${MONTHS[m-1]} you logged ${list.length} sighting${list.length!==1?'s':''} across ${nSpecies} species.`;
+  return `<div class="notes-page" style="--wash:${wash}">
+    <div class="np-head">${MONTHS[m-1]}, ${y} — Field Notes</div>
+    <p class="np-lead">${lead}</p>${monthFacts(y,m,list).map(f=>`<p>${f}</p>`).join('')}</div>`;
+}
+function seasonKeyOf(y,m){const s=seasonOfMonth(m);if(s==='Winter'&&m===12)return`${y}-${y+1}-Winter`;if(s==='Winter')return`${y-1}-${y}-Winter`;return`${y}-${s}`;}
+function renderFieldNotes(){
+  const body=$('#almanacBody'),groups={};
+  state.sightings.forEach(s=>{const k=s.dateISO.slice(0,7);(groups[k]=groups[k]||[]).push(s);});
+  const keys=Object.keys(groups).sort().reverse();
+  if(!keys.length){body.innerHTML=`<div class="empty"><svg class="ico"><use href="#ui-book"/></svg><p>No field notes yet — log a few sightings and monthly recaps appear here.</p></div>`;return;}
+  body.innerHTML=keys.map(k=>fieldNotePage(k,groups[k])).join('');
+  body.querySelectorAll('.link-species').forEach(a=>a.onclick=()=>openSpeciesPlate(a.dataset.id));
+}
+
+/* ---- on this day (§7.4) ---- */
+function renderOnThisDay(boxId){
+  const box=$('#'+boxId);if(!box)return;box.innerHTML='';
+  const list=onThisDay();if(!list.length)return;
+  const byYear={};list.forEach(s=>{(byYear[yearOf(s.dateISO)]=byYear[yearOf(s.dateISO)]||[]).push(s);});
+  Object.keys(byYear).sort().reverse().forEach(y=>{
+    const items=byYear[y],counts={};items.forEach(s=>counts[s.speciesId]=(counts[s.speciesId]||0)+1);
+    const parts=Object.entries(counts).map(([id,n])=>{const nm=speciesById(id)?speciesById(id).name:'?';return `${n} ${nm}${n>1?'s':''}`;});
+    const place=items.find(s=>s.location&&s.location.placeName);
+    const card=el('div',{class:'otd-card',onclick:()=>openSpeciesPlate(items[0].speciesId)});
+    card.innerHTML=`<svg class="ico"><use href="#ui-book"/></svg><div><div class="otd-h">On this day in ${y}</div>`+
+      `<div class="otd-b">${esc(parts.join(', '))}${place?' — '+esc(place.location.placeName):''}</div></div>`;
+    box.appendChild(card);
+  });
+}
+
+/* ---- species detail plate (§7.5) ---- */
+function openSpeciesPlate(id){
+  const sp=speciesById(id);if(!sp)return;
+  const st=speciesStats(id),list=speciesSightings(id).slice().reverse();
+  const hasPts=list.some(s=>s.location&&s.location.lat!=null);
+  const photoIds=[].concat(...list.map(s=>s.photoIds||[]));
+  const statHtml=st?`<div class="stat-band">
+      <div><div class="st">Sightings</div><div class="sv">${st.total}</div></div>
+      <div><div class="st">First seen</div><div class="sv">${fmtDate(st.first)}</div></div>
+      <div><div class="st">Latest</div><div class="sv">${fmtDate(st.last)}</div></div>
+      <div><div class="st">Most in</div><div class="sv">${MONTHS[st.mostMonth]}</div></div>
+      <div><div class="st">Usual spot</div><div class="sv">${st.mostSpot?esc(st.mostSpot):'—'}</div></div>
+    </div>`:'<p class="muted">No sightings logged yet.</p>';
+  const specimens=list.map(s=>`<div class="specimen"><div class="sd">${fmtDate(s.dateISO)}${s.timeOfDay?' · '+TOD_LABEL[s.timeOfDay]:''}${s.weather?' · '+esc(weatherText(s.weather)):''}</div>`+
+    `<div class="sb">${esc((s.location&&s.location.placeName)||'—')}${s.count!=null?' · ×'+s.count:''}${s.notes?' — '+esc(s.notes.split('\n')[0]):''}</div></div>`).join('');
+  openSheet(`
+    <div class="plate-illus" style="--wash:var(--wash-${sp.category})">${speciesIcon(sp,'ico')}</div>
+    <div class="plate-cap"><div class="pn">${esc(sp.name)}</div><div class="pc">${esc(CAT_LABEL[sp.category])}</div><div class="plno">Plate No. ${plateNumber(id)}</div></div>
+    ${statHtml}
+    ${st?`<div class="al-title">By month</div>${barChartSVG(st.freq,MONTHS_SHORT,{width:340,height:110})}`:''}
+    ${hasPts?`<div id="plateMap" style="height:150px;width:100%;border:1px solid var(--rule);border-radius:4px;background:var(--paper-3);margin:8px 0"></div>`:''}
+    ${photoIds.length?`<div class="photo-strip" id="platePhotos"></div>`:''}
+    <div class="al-title">Specimens</div>${specimens||'<p class="muted">None yet.</p>'}
+    <div class="btnrow" style="margin-top:14px"><button class="act ghost" id="plClose">Close</button></div>`);
+  let plateMap=null;
+  sheetCleanup=()=>{if(plateMap){plateMap.remove();plateMap=null;}revokeDetailPhotoUrls();};
+  if(hasPts&&typeof L!=='undefined')setTimeout(()=>{
+    const pts=list.filter(s=>s.location&&s.location.lat!=null).map(s=>[s.location.lat,s.location.lng]);
+    plateMap=L.map('plateMap',{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,tap:false});
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(plateMap);
+    pts.forEach(p=>L.marker(p,{icon:L.divIcon({html:`<div class="fj-marker">${speciesIcon(sp)}</div>`,className:'',iconSize:[26,26],iconAnchor:[13,13]})}).addTo(plateMap));
+    try{plateMap.fitBounds(pts,{padding:[30,30],maxZoom:13});}catch(e){if(pts[0])plateMap.setView(pts[0],12);}
+    setTimeout(()=>plateMap&&plateMap.invalidateSize(),60);
+  },90);
+  if(photoIds.length)renderPhotoStrip('platePhotos',photoIds);
+  $('#plClose').onclick=closeSheet;
 }
 
 /* ============================================================= *
