@@ -259,11 +259,11 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
 .filebtn{display:inline-flex;align-items:center;min-height:44px;padding:11px 16px;border:1px solid var(--ink);
   border-radius:3px;font-size:15px;cursor:pointer;background:var(--paper);color:var(--ink);
   -webkit-user-select:none;user-select:none;}
-/* TEMP §3.1 EXIF probe panel — remove with the probe */
-#exifProbe{margin-top:10px;border:1px dashed var(--rule);border-radius:4px;padding:8px 10px;
-  font-size:12px;color:var(--ink-2);line-height:1.5;}
-#exifProbe:empty{display:none;}
-#exifProbe .xp-row{margin:6px 0;word-break:break-word;border-top:1px solid var(--rule-soft);padding-top:6px;}
+/* §3.3 EXIF suggestion chip — entry-flow rules: plain, no washes, big targets */
+#exifChip:empty{display:none;}
+.exif-chip{margin-top:10px;border:1px solid var(--rule);border-radius:4px;background:var(--paper-2);
+  padding:8px 10px;display:flex;align-items:center;gap:8px;font-size:14px;}
+.exif-chip .xc-txt{flex:1;min-width:0;line-height:1.4;}
 .filebtn:active{background:var(--ink);color:var(--paper);}
 .filebtn input{display:none;}
 .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
@@ -1178,7 +1178,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <div class="section-label">Photos</div>
     <label class="filebtn">Add photo(s)<input type="file" id="photoInput" accept="image/*" multiple></label>
     <div class="thumbs" id="photoThumbs"></div>
-    <div id="exifProbe"></div><!-- TEMP §3.1 EXIF probe output — remove with the probe -->
+    <div id="exifChip"></div>
 
     <div class="section-label">Notes</div>
     <textarea id="notesInput" placeholder="distant, on the ridge trail…"></textarea>
@@ -1244,7 +1244,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <script>
 "use strict";
 /* Keep APP_VERSION in step with CACHE_VERSION in sw.js. */
-const APP_VERSION='v0.6.2';
+const APP_VERSION='v0.6.3';
 const SCHEMA_VERSION=1;
 
 /* ---------------- tiny helpers ---------------- */
@@ -1529,8 +1529,8 @@ function renderTod(){
     b.classList.toggle('suggest',!state.form.timeOfDay&&t===cur);
   });
 }
-function currentTod(){const h=new Date().getHours();
-  if(h>=5&&h<12)return'morning';if(h>=12&&h<17)return'afternoon';if(h>=17&&h<21)return'evening';return'night';}
+function todOfHour(h){if(h>=5&&h<12)return'morning';if(h>=12&&h<17)return'afternoon';if(h>=17&&h<21)return'evening';return'night';}
+function currentTod(){return todOfHour(new Date().getHours());}
 function renderCount(){
   const v=$('#countVal');const c=state.form.count;
   if(c==null){v.textContent='—';v.classList.add('empty');}else{v.textContent=c;v.classList.remove('empty');}
@@ -2163,7 +2163,6 @@ function wireUI(){
   $('#placeNameInput').oninput=e=>{const v=e.target.value;state.form.placeName=v.trim()===''?null:v;};
   const ss=$('#showSpots');if(ss)ss.onchange=refreshMap;
   const pi=$('#photoInput');if(pi)pi.onchange=async e=>{await addPhotos(e.target.files);e.target.value='';};
-  wireExifProbe();   // TEMP §3.1 — remove with the probe
   $('#zoom').onclick=closeZoom;
   $('#almanacSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;almanac.view=b.dataset.al;renderAlmanac();});
   measureTopbar();window.addEventListener('resize',measureTopbar);window.addEventListener('orientationchange',()=>setTimeout(measureTopbar,150));
@@ -2526,90 +2525,129 @@ async function compressImage(file){
   if(bmp.close)bmp.close();
   return {full:full.blob,thumb:thumb.blob,width:full.w,height:full.h};
 }
-/* ============ TEMP §3.1 EXIF PROBE — remove when the EXIF feature ships ============
- * Long-press (≥1.5s) "Add photo(s)" to toggle probe mode. While on, every file
- * selected is sniffed from its RAW bytes (before compressImage strips metadata)
- * for an EXIF APP1 segment, DateTimeOriginal, and GPS coords; the verdict is
- * shown in a dismissible panel under the thumbnails. This answers the one real
- * unknown before building the feature: does GPS EXIF survive the iOS photo
- * picker into a web file input on the target device/path.
+/* ---- §3.2 EXIF parser — pure, standalone, vanilla ----
+ * Parses the RAW File bytes (before compressImage's canvas re-encode strips
+ * all metadata). JPEG only: APP1 "Exif\0\0" → TIFF (both byte orders) →
+ * DateTimeOriginal + GPS. EXIF time is camera-local; used as-is, no TZ math.
+ * Probe verified (2026-07-10, target iPhone): library picks of Camera photos
+ * arrive as JPEG with date+GPS intact; live captures lack date/GPS; screenshots
+ * are PNG. Malformed/absent EXIF must never break photo attachment → null.
  */
-let exifProbeOn=false;
-function wireExifProbe(){
-  const inp=$('#photoInput');const btn=inp?inp.closest('label'):null;if(!btn)return;
-  let lp=null;const cancel=()=>{if(lp){clearTimeout(lp);lp=null;}};
-  btn.addEventListener('pointerdown',()=>{cancel();lp=setTimeout(()=>{lp=null;
-    exifProbeOn=!exifProbeOn;const box=$('#exifProbe');if(box)box.innerHTML='';
-    toast(exifProbeOn?'EXIF probe ON — photos you add will be sniffed':'EXIF probe off',null);},1500);});
-  ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev,cancel));
-}
-async function probeExif(file){
-  const out={name:file.name,type:file.type,size:file.size,jpeg:false,app1:false,date:null,gps:null,note:''};
+async function parseExif(file){   // → {dateISO,exactTime,lat,lng} (fields nullable) | null
   try{
-    const v=new DataView(await file.slice(0,131072).arrayBuffer());   // EXIF APP1 lives near the start
-    if(v.byteLength>=12&&v.getUint32(4)===0x66747970){out.note='HEIC/HEIF container (ftyp) — arrived un-transcoded';return out;}
-    if(v.byteLength>=8&&v.getUint32(0)===0x89504E47){out.note='PNG — no EXIF expected (screenshot?)';return out;}
-    if(v.byteLength<4||v.getUint16(0)!==0xFFD8){out.note='unrecognized header — not JPEG/PNG/HEIC';return out;}
-    out.jpeg=true;
-    let off=2;
+    const v=new DataView(await file.slice(0,131072).arrayBuffer());   // APP1 lives near the start
+    if(v.byteLength<4||v.getUint16(0)!==0xFFD8)return null;           // not a JPEG
+    let off=2,tiff=-1;
     while(off+4<=v.byteLength){                                       // walk JPEG segments
       const marker=v.getUint16(off),len=v.getUint16(off+2);
       if((marker&0xFF00)!==0xFF00||marker===0xFFDA)break;             // corrupt or image data reached
-      if(marker===0xFFE1&&off+12<=v.byteLength&&v.getUint32(off+4)===0x45786966&&v.getUint16(off+8)===0){ // APP1 "Exif\0\0"
-        out.app1=true;probeTiff(v,off+10,out);break;
-      }
+      if(marker===0xFFE1&&off+12<=v.byteLength&&v.getUint32(off+4)===0x45786966&&v.getUint16(off+8)===0){tiff=off+10;break;}
       off+=2+len;
     }
-    if(!out.app1)out.note='JPEG but no EXIF APP1 segment';
-  }catch(e){out.note='parse error — '+e;}
-  return out;
-}
-function probeTiff(v,t,out){    // t = offset of the TIFF header inside the APP1 payload
-  try{
-    const le=v.getUint16(t)===0x4949;                                 // 'II' little-endian / 'MM' big-endian
-    const u16=o=>v.getUint16(t+o,le),u32=o=>v.getUint32(t+o,le);
-    if(u16(2)!==42)return;
+    if(tiff<0)return null;
+    const le=v.getUint16(tiff)===0x4949;                              // 'II' little-endian / 'MM' big-endian
+    const u16=o=>v.getUint16(tiff+o,le),u32=o=>v.getUint32(tiff+o,le);
+    if(u16(2)!==42)return null;
     let exifPtr=0,gpsPtr=0;
     const walk=(dir,cb)=>{const n=u16(dir);for(let i=0;i<n&&i<512;i++){const e=dir+2+i*12;cb(u16(e),e);}};
     walk(u32(4),(tag,e)=>{if(tag===0x8769)exifPtr=u32(e+8);if(tag===0x8825)gpsPtr=u32(e+8);});
     const ascii=e=>{const cnt=u32(e+4),o=cnt<=4?e+8:u32(e+8);let s='';
-      for(let i=0;i<Math.min(cnt,64)-1;i++)s+=String.fromCharCode(v.getUint8(t+o+i));return s;};
+      for(let i=0;i<Math.min(cnt,64)-1;i++)s+=String.fromCharCode(v.getUint8(tiff+o+i));return s;};
     const rat=o=>u32(o)/(u32(o+4)||1);
-    if(exifPtr)walk(exifPtr,(tag,e)=>{if(tag===0x9003)out.date=ascii(e);});   // DateTimeOriginal
+    let dateISO=null,exactTime=null,lat=null,lng=null;
+    if(exifPtr)walk(exifPtr,(tag,e)=>{if(tag===0x9003){                // DateTimeOriginal "YYYY:MM:DD HH:MM:SS"
+      const m=ascii(e).match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2})/);
+      if(m&&+m[2]>=1&&+m[2]<=12&&+m[3]>=1&&+m[3]<=31&&+m[4]<=23&&+m[5]<=59){
+        dateISO=`${m[1]}-${m[2]}-${m[3]}`;exactTime=`${m[4]}:${m[5]}`;}
+    }});
     if(gpsPtr){
-      let latRef='',lngRef='',lat=null,lng=null;
+      let latRef='',lngRef='',la=null,ln=null;
       walk(gpsPtr,(tag,e)=>{
         if(tag===1)latRef=ascii(e);else if(tag===3)lngRef=ascii(e);
         else if(tag===2||tag===4){const o=u32(e+8),val=rat(o)+rat(o+8)/60+rat(o+16)/3600; // deg/min/sec rationals
-          if(tag===2)lat=val;else lng=val;}
+          if(tag===2)la=val;else ln=val;}
       });
-      if(lat!=null&&lng!=null){
-        if(latRef==='S')lat=-lat;if(lngRef==='W')lng=-lng;
-        if(isFinite(lat)&&isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180&&!(lat===0&&lng===0))
-          out.gps={lat:+lat.toFixed(5),lng:+lng.toFixed(5)};
-        else out.note='GPS tags present but values invalid';
-      }else out.note='GPS IFD present but lat/lng tags missing';
+      if(la!=null&&ln!=null){
+        if(latRef==='S')la=-la;if(lngRef==='W')ln=-ln;
+        if(isFinite(la)&&isFinite(ln)&&Math.abs(la)<=90&&Math.abs(ln)<=180&&!(la===0&&ln===0)){lat=la;lng=ln;}
+      }
     }
-  }catch(e){out.note=out.note||('TIFF parse error — '+e);}
+    return(dateISO||lat!=null)?{dateISO,exactTime,lat,lng}:null;
+  }catch(e){return null;}
 }
-function renderProbeResults(results){
-  const box=$('#exifProbe');if(!box)return;
-  const rows=results.map(r=>{
-    const bits=[r.jpeg?'JPEG ✓':'JPEG ✗',r.app1?'EXIF APP1 ✓':'EXIF APP1 ✗',
-      'date '+(r.date?esc(r.date):'✗'),'GPS '+(r.gps?`${r.gps.lat}, ${r.gps.lng}`:'✗')].join(' · ');
-    return `<div class="xp-row"><b>${esc(r.name||'(unnamed)')}</b> · ${esc(r.type||'?')} · ${(r.size/1048576).toFixed(1)} MB<br>${bits}${r.note?'<br>'+esc(r.note):''}</div>`;
-  }).join('');
-  box.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
-    <b>EXIF probe</b><button class="act ghost" type="button" style="min-height:30px;padding:3px 10px"
-    onclick="document.getElementById('exifProbe').innerHTML=''">×</button></div>`+rows;
+
+/* ---- §3.3 EXIF suggestion chip — suggest, never clobber ----
+ * The form pre-selects last-used spot and today's date, so silent filling is
+ * wrong. Instead the first photo of a selection that yields EXIF offers a
+ * dismissible chip; only tapping "Use" applies. Cleared on save/reset, on
+ * dismissal, and when all photos are removed. Shown in edit mode too; never
+ * auto-applied.
+ */
+function fmtExifWhen(dateISO,exactTime){
+  const d=parseLocal(dateISO);
+  const opts={month:'short',day:'numeric'};
+  if(d.getFullYear()!==new Date().getFullYear())opts.year='numeric';
+  let s=new Intl.DateTimeFormat('en-US',opts).format(d);
+  if(exactTime){const p=exactTime.split(':');const dt=new Date(d);dt.setHours(+p[0],+p[1]);
+    s+=', '+new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(dt);}
+  return s;
 }
-/* =========================== end TEMP §3.1 EXIF PROBE =========================== */
+function renderExifChip(){
+  const box=$('#exifChip');if(!box)return;
+  const sg=state.form.exifSuggest;
+  if(!sg){box.innerHTML='';return;}
+  const parts=[];
+  if(sg.dateISO)parts.push(`taken <b>${esc(fmtExifWhen(sg.dateISO,sg.exactTime))}</b>`);
+  if(sg.lat!=null)parts.push(`near <b>${esc(sg.placeName||`${sg.lat.toFixed(4)}, ${sg.lng.toFixed(4)}`)}</b>`);
+  box.innerHTML=`<div class="exif-chip"><span>📷</span><span class="xc-txt">Photo ${parts.join(', ')}</span>
+    <button class="act" id="exifUse" type="button" style="min-height:40px;padding:8px 16px">Use</button>
+    <button class="iconbtn" id="exifDismiss" type="button" aria-label="Dismiss photo suggestion"><svg class="ico" style="width:18px;height:18px"><use href="#ui-close"/></svg></button></div>`;
+  $('#exifUse').onclick=applyExifSuggest;
+  $('#exifDismiss').onclick=()=>{state.form.exifSuggest=null;renderExifChip();};
+}
+// Resolve a place name into the chip when online. Stale-guard by suggestion
+// object identity — a save/dismiss/new-selection during the await drops the result.
+function geocodeExifSuggest(){
+  const sg=state.form.exifSuggest;
+  if(!sg||sg.lat==null||sg.placeName!=null||!navigator.onLine)return;
+  reverseGeocode(sg.lat,sg.lng).then(nm=>{
+    if(nm&&state.form.exifSuggest===sg){sg.placeName=nm;renderExifChip();}
+  }).catch(()=>{});
+}
+function applyExifSuggest(){
+  const f=state.form,sg=f.exifSuggest;if(!sg)return;
+  if(sg.dateISO)f.dateISO=sg.dateISO>todayLocal()?todayLocal():sg.dateISO;   // camera clock skew → clamp like everywhere else
+  if(sg.exactTime){f.exactTime=sg.exactTime;f.timeOfDay=todOfHour(+sg.exactTime.split(':')[0]);}
+  if(sg.lat!=null){
+    f.coords={lat:sg.lat,lng:sg.lng};f.locKind='pin';f.spotId=null;
+    f.placeName=sg.placeName!=null?sg.placeName:null;                        // chip may have resolved it already
+    if(f.placeName==null&&navigator.onLine){
+      const lat=sg.lat;
+      reverseGeocode(sg.lat,sg.lng).then(nm=>{                               // useCurrentLocation's stale-guard pattern
+        if(nm&&f===state.form&&f.coords&&f.coords.lat===lat){f.placeName=nm;updatePlaceName();}
+      }).catch(()=>{});
+    }
+  }
+  f.exifSuggest=null;
+  renderLog();
+}
 async function addPhotos(files){
-  const raw=Array.from(files||[]);
-  // TEMP §3.1: sniff raw bytes BEFORE compression (which strips all metadata)
-  if(exifProbeOn&&raw.length){const rs=[];for(const f of raw)rs.push(await probeExif(f));renderProbeResults(rs);}
-  const arr=raw.filter(f=>f.type&&f.type.startsWith('image/'));
+  const arr=Array.from(files||[]).filter(f=>f.type&&f.type.startsWith('image/'));
   if(!arr.length)return;
+  // §3.3: offer a suggestion from the FIRST photo of the selection that yields
+  // EXIF — only when the date differs from the form or coords are present.
+  if(!state.form.exifSuggest){
+    for(const f of arr){
+      const ex=await parseExif(f);
+      if(ex){
+        if((ex.dateISO&&ex.dateISO!==state.form.dateISO)||ex.lat!=null){
+          state.form.exifSuggest={dateISO:ex.dateISO,exactTime:ex.exactTime,lat:ex.lat,lng:ex.lng,placeName:null};
+          renderExifChip();geocodeExifSuggest();
+        }
+        break;                                   // first-with-EXIF wins
+      }
+    }
+  }
   if(!state.form.photos)state.form.photos=[];
   const box=$('#photoThumbs');
   for(const file of arr){
@@ -2630,6 +2668,8 @@ function renderPhotoThumbs(){
     wrap.querySelector('.thumb-x').onclick=()=>{state.form.photos.splice(idx,1);renderPhotoThumbs();};
     box.appendChild(wrap);
   });
+  if(!(state.form.photos||[]).length)state.form.exifSuggest=null;   // §3.3: chip clears when all photos are removed
+  renderExifChip();
 }
 
 /* ---- journal row thumbnail (lazy object URLs, revoked on full re-render) ---- */
