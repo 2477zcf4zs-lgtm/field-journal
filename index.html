@@ -283,6 +283,7 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
 .al-controls select{width:auto;min-width:130px;flex:1;}
 .year-pager{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--rule);border-radius:4px;}
 .year-pager button{width:40px;height:40px;background:var(--paper);border:0;font-size:18px;color:var(--ink);cursor:pointer;}
+.year-pager button:disabled{opacity:.35;pointer-events:none;}
 .year-pager .yr{min-width:56px;text-align:center;font-family:var(--serif);}
 .heat-table{border:1px solid var(--rule);border-radius:4px;padding:8px 6px;overflow-x:auto;background:var(--paper-2);}
 .heat-row{display:flex;align-items:center;gap:2px;margin:1px 0;}
@@ -1236,7 +1237,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <script>
 "use strict";
 /* Keep APP_VERSION in step with CACHE_VERSION in sw.js. */
-const APP_VERSION='v0.5.0';
+const APP_VERSION='v0.6.0';
 const SCHEMA_VERSION=1;
 
 /* ---------------- tiny helpers ---------------- */
@@ -1422,6 +1423,7 @@ function renderLog(){
   renderSpeciesPicker();
   renderSpotChips();
   const f=state.form;
+  $('#dateInput').max=todayLocal();   // no future dates (kept current across midnight)
   $('#dateInput').value=f.dateISO;
   renderTod();renderCount();
   $('#notesInput').value=f.notes||'';
@@ -1839,7 +1841,7 @@ function openSettings(){
     <div class="section-label">Storage</div>
     <p class="muted" id="storageInfo">…</p>
     <div class="section-label">About</div>
-    <p class="muted">Field Journal <span class="tag">${APP_VERSION}</span><br>
+    <p class="muted">Field Journal <span class="tag" id="aboutVersion" style="user-select:none;-webkit-user-select:none">${APP_VERSION}</span><br>
       <span class="small-note">Schema v${SCHEMA_VERSION} · ${state.sightings.length} sightings · ${state.species.length} species</span></p>
     <div class="btnrow" style="margin-top:8px"><button class="act ghost" id="setClose">Close</button></div>
   `);
@@ -1855,6 +1857,73 @@ function openSettings(){
     m.settings.units=b.dataset.u;await idbPut('meta',m);
     $$('#unitSeg button').forEach(x=>x.classList.toggle('sel',x.dataset.u===m.settings.units));});
   showStorage();
+  // Dev-only: long-press (≥1.5s) the version string to open scale-test tools.
+  const av=$('#aboutVersion');
+  if(av){let lp=null;
+    const cancel=()=>{if(lp){clearTimeout(lp);lp=null;}};
+    av.addEventListener('pointerdown',()=>{cancel();lp=setTimeout(()=>{lp=null;openDevTools();},1500);});
+    ['pointerup','pointerleave','pointercancel'].forEach(ev=>av.addEventListener(ev,cancel));
+  }
+}
+/* ---- dev tools (scale testing, §2.6) — reachable only via the long-press above ---- */
+function openDevTools(){
+  const seeded=state.sightings.filter(s=>s.seeded).length;
+  openSheet(`<h2>Developer tools</h2><p class="sub">Scale testing only — not part of normal use.</p>
+    <div class="btnrow">
+      <button class="act" id="devSeed">Seed 500 test sightings</button>
+      <button class="act danger" id="devUnseed">Delete seeded data${seeded?` (${seeded})`:''}</button>
+    </div>
+    <p class="small-note" id="devNote">Seeded records are tagged and never fetch weather.</p>
+    <div class="btnrow" style="margin-top:14px"><button class="act ghost" id="devBack">Back</button></div>`);
+  $('#devBack').onclick=openSettings;
+  $('#devSeed').onclick=async()=>{
+    const btn=$('#devSeed');btn.disabled=true;btn.textContent='Seeding…';
+    const n=await seedTestData(500);
+    closeSheet();
+    if(currentTab()==='journal'){state.journalWindow=60;renderJournal();}else if(currentTab()==='almanac')renderAlmanac();
+    toast(`Seeded ${n} test sightings`,null);
+  };
+  $('#devUnseed').onclick=async()=>{
+    const btn=$('#devUnseed');btn.disabled=true;btn.textContent='Deleting…';
+    const n=await deleteSeededData();
+    closeSheet();
+    if(currentTab()==='journal'){state.journalWindow=60;renderJournal();}else if(currentTab()==='almanac')renderAlmanac();
+    toast(`Deleted ${n} seeded sightings`,null);
+  };
+}
+async function seedTestData(n){
+  const active=state.species.filter(s=>!s.isArchived);
+  if(!active.length)return 0;
+  const spots=state.spots.slice();
+  const tods=[null,'morning','afternoon','evening','night'];
+  const noteBank=['distant, on the ridge trail','brief look before it moved off','heard, not seen',
+    'a pair together','juvenile','crossing the fire road','feeding quietly','calling at dusk'];
+  const today=new Date(),recs=[];
+  for(let i=0;i<n;i++){
+    const sp=active[Math.floor(Math.random()*active.length)];
+    const d=new Date(today.getFullYear(),today.getMonth(),today.getDate()-Math.floor(Math.random()*3*365));
+    const dateISO=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    // location: usually a saved spot, sometimes a loose pin, sometimes none
+    const spot=spots.length&&Math.random()<0.6?spots[Math.floor(Math.random()*spots.length)]:null;
+    let loc;
+    if(spot)loc={kind:'spot',spotId:spot.id,lat:spot.lat??null,lng:spot.lng??null,placeName:spot.name};
+    else if(Math.random()<0.4)loc={kind:'pin',spotId:null,lat:37.0+Math.random()*0.3,lng:-122.2+Math.random()*0.3,placeName:'Test Ridge'};
+    else loc={kind:'none',spotId:null,lat:null,lng:null,placeName:null};
+    const created=new Date(d.getTime()+Math.random()*36e5).toISOString();
+    recs.push({id:uuid(),dateISO,timeOfDay:tods[Math.floor(Math.random()*tods.length)],exactTime:null,
+      speciesId:sp.id,location:loc,count:Math.random()<0.4?1+Math.floor(Math.random()*4):null,
+      notes:Math.random()<0.4?noteBank[Math.floor(Math.random()*noteBank.length)]:'',
+      weather:null,weatherPending:false,moonPhase:computeMoon(dateISO,null),  // weatherPending:false → never hits the weather API
+      photoIds:[],seeded:true,createdAt:created,updatedAt:created});
+  }
+  for(const r of recs){await idbPut('sightings',r);state.sightings.push(r);}
+  return recs.length;
+}
+async function deleteSeededData(){
+  const doomed=state.sightings.filter(s=>s.seeded);
+  for(const s of doomed)await idbDel('sightings',s.id).catch(()=>{});
+  state.sightings=state.sightings.filter(s=>!s.seeded);
+  return doomed.length;
 }
 async function showStorage(){
   let txt='';
@@ -2059,7 +2128,9 @@ function wireUI(){
   $('#scrim').onclick=closeSheet;
   $('#saveBtn').onclick=saveSighting;
   $('#cancelEdit').onclick=resetForm;
-  $('#dateInput').onchange=e=>{state.form.dateISO=e.target.value||todayLocal();};
+  $('#dateInput').onchange=e=>{let v=e.target.value||todayLocal();
+    if(v>todayLocal()){v=todayLocal();e.target.value=v;}   // clamp future dates
+    state.form.dateISO=v;};
   $('#notesInput').oninput=e=>{state.form.notes=e.target.value;};
   $('#exactTimeToggle').onclick=()=>{const w=$('#exactTimeWrap');const show=w.style.display==='none';
     w.style.display=show?'block':'none';if(!show){state.form.exactTime=null;$('#exactTimeInput').value='';}};
@@ -2370,6 +2441,7 @@ async function fetchWeatherFor(id){
   const lat=s0.location.lat,lng=s0.location.lng,dateISO=s0.dateISO;
   let hh=12;if(s0.exactTime)hh=+s0.exactTime.split(':')[0];else if(s0.timeOfDay)hh=todMidHour(s0.timeOfDay);
   const daysAgo=daysBetweenLocal(dateISO,todayLocal());
+  if(daysAgo<0){s0.weatherPending=false;delete s0.weatherTries;await idbPut('sightings',s0);return;} // future date — no weather to fetch, stop retrying
   const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),6000);
   let w=null,hardError=false;
   try{
@@ -2498,6 +2570,8 @@ function seasonOfMonth(m){for(const[n,ms]of SEASONS)if(ms.includes(m))return n;r
 function freqByMonth(list){const a=Array(12).fill(0);list.forEach(s=>a[monthOf(s.dateISO)-1]++);return a;}
 function freqBySeason(list){const o={Winter:0,Spring:0,Summer:0,Fall:0};list.forEach(s=>o[seasonOfMonth(monthOf(s.dateISO))]++);return o;}
 function sightingYears(){return[...new Set(state.sightings.map(s=>yearOf(s.dateISO)))].sort((a,b)=>a-b);}
+// Pager bounds: the years with data, always including the current year even if empty.
+function yearRange(){const ys=sightingYears().slice();const cy=new Date().getFullYear();if(!ys.includes(cy))ys.push(cy);return[Math.min(...ys),Math.max(...ys)];}
 function speciesSightings(id){return state.sightings.filter(s=>s.speciesId===id).sort((a,b)=>a.dateISO<b.dateISO?-1:(a.dateISO>b.dateISO?1:0));}
 function speciesStats(id){
   const list=speciesSightings(id);if(!list.length)return null;
@@ -2544,6 +2618,7 @@ function renderAlmanac(){
 /* a) year heatmap */
 function renderHeatmap(){
   const A=almanac,body=$('#almanacBody');
+  revokeJournalPhotoUrls();   // day-list rows below reuse the journal thumb URLs — reclaim any from a prior render
   const inYear=state.sightings.filter(s=>yearOf(s.dateISO)===A.year&&(!A.hmSpecies||s.speciesId===A.hmSpecies));
   const perDay={};inYear.forEach(s=>{perDay[s.dateISO]=(perDay[s.dateISO]||0)+1;});
   const max=Math.max(1,...Object.values(perDay));
@@ -2562,15 +2637,21 @@ function renderHeatmap(){
     <div class="heat-legend">less <span class="heat-cell" style="background:${ink(0)}"></span><span class="heat-cell" style="background:${ink(Math.ceil(max/3))}"></span><span class="heat-cell" style="background:${ink(Math.ceil(2*max/3))}"></span><span class="heat-cell" style="background:${ink(max)}"></span> more</div>
     <div class="muted" style="margin-top:8px">${inYear.length} sighting${inYear.length!==1?'s':''} in ${A.year}${A.hmSpecies?' · '+esc(speciesById(A.hmSpecies).name):''}</div>
     <div class="day-list" id="hmDayList"></div>`;
-  $('#hmPrev').onclick=()=>{A.year--;renderHeatmap();};
-  $('#hmNext').onclick=()=>{A.year++;renderHeatmap();};
+  const[minY,maxY]=yearRange();
+  $('#hmPrev').disabled=A.year<=minY;$('#hmNext').disabled=A.year>=maxY;
+  $('#hmPrev').onclick=()=>{if(A.year>minY){A.year--;renderHeatmap();}};
+  $('#hmNext').onclick=()=>{if(A.year<maxY){A.year++;renderHeatmap();}};
   $('#hmSpecies').onchange=e=>{A.hmSpecies=e.target.value;renderHeatmap();};
-  body.querySelectorAll('.heat-cell.has').forEach(c=>c.onclick=()=>{
-    const iso=c.dataset.iso,box=$('#hmDayList');
-    box.innerHTML=`<div class="al-title">${fmtDayHead(iso)}</div>`;
-    state.sightings.filter(s=>s.dateISO===iso&&(!A.hmSpecies||s.speciesId===A.hmSpecies)).forEach(s=>box.appendChild(entryRow(s)));
-    box.scrollIntoView({behavior:'smooth',block:'nearest'});
-  });
+  body.querySelectorAll('.heat-cell.has').forEach(c=>c.onclick=()=>showHeatmapDay(c.dataset.iso));
+}
+// Populate the heatmap day-list for one date. Extracted so On-This-Day cards can
+// route here too. Reuses the journal thumb-URL array (revoked on each rebuild).
+function showHeatmapDay(iso){
+  const box=$('#hmDayList');if(!box)return;
+  revokeJournalPhotoUrls();
+  box.innerHTML=`<div class="al-title">${fmtDayHead(iso)}</div>`;
+  state.sightings.filter(s=>s.dateISO===iso&&(!almanac.hmSpecies||s.speciesId===almanac.hmSpecies)).forEach(s=>box.appendChild(entryRow(s)));
+  box.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 /* b) frequency by month + season */
 function renderFrequency(){
@@ -2595,14 +2676,20 @@ function renderFrequency(){
   $('#freqSpecies').onchange=e=>{A.freqSpecies=e.target.value;renderFrequency();};
   $('#freqCategory').onchange=e=>{A.freqCategory=e.target.value;renderFrequency();};
   const py=$('#freqPY');if(py)py.onchange=e=>{A.freqPerYear=e.target.checked;if(A.freqPerYear&&!years.includes(A.freqYear))A.freqYear=years[years.length-1];renderFrequency();};
-  const fp=$('#fyPrev');if(fp)fp.onclick=()=>{A.freqYear--;renderFrequency();};
-  const fnx=$('#fyNext');if(fnx)fnx.onclick=()=>{A.freqYear++;renderFrequency();};
+  const[minY,maxY]=yearRange();
+  const fp=$('#fyPrev');if(fp){fp.disabled=A.freqYear<=minY;fp.onclick=()=>{if(A.freqYear>minY){A.freqYear--;renderFrequency();}};}
+  const fnx=$('#fyNext');if(fnx){fnx.disabled=A.freqYear>=maxY;fnx.onclick=()=>{if(A.freqYear<maxY){A.freqYear++;renderFrequency();}};}
 }
 /* c) field-notes summaries (templated, deterministic) */
 function categoryTint(list){const c={};list.forEach(s=>{const sp=speciesById(s.speciesId);if(sp)c[sp.category]=(c[sp.category]||0)+1;});
   let best='plant',mx=-1;for(const k in c)if(c[k]>mx){mx=c[k];best=k;}return best;}
 function seededPick(arr,seed){return arr[Math.abs(Math.floor(seed))%arr.length];}
-function monthFacts(y,m,list){
+// UUIDs are all length 36, so seed+id.length gave no per-species variation; sum
+// the char codes instead so different species pick different phrasings.
+function idCharSum(id){return id.split('').reduce((a,c)=>a+c.charCodeAt(0),0);}
+// bySpecies: Map(speciesId → that species' sightings sorted asc by dateISO), built
+// once by the caller so we don't re-filter+sort all sightings per species per month.
+function monthFacts(y,m,list,bySpecies){
   const seed=y*13+m,ymPrefix=`${y}-${pad(m)}`,facts=[];
   const counts={};list.forEach(s=>counts[s.speciesId]=(counts[s.speciesId]||0)+1);
   const ids=Object.keys(counts);
@@ -2614,9 +2701,9 @@ function monthFacts(y,m,list){
     `${speciesLink(topId)} led the month with ${topN} sightings.`],seed)});
   // firsts (new to journal, or first-since)
   for(const id of ids){
-    const all=speciesSightings(id);
+    const all=bySpecies.get(id)||[];
     if(all[0]&&all[0].dateISO.slice(0,7)===ymPrefix)
-      facts.push({p:6,t:seededPick([`A new species for the journal: ${speciesLink(id)}.`,`First-ever record: ${speciesLink(id)}.`],seed+id.length)});
+      facts.push({p:6,t:seededPick([`A new species for the journal: ${speciesLink(id)}.`,`First-ever record: ${speciesLink(id)}.`],seed+idCharSum(id))});
     else{const prior=all.filter(s=>s.dateISO<ymPrefix+'-01');
       if(prior.length){const last=prior[prior.length-1],gap=(y*12+m)-(yearOf(last.dateISO)*12+monthOf(last.dateISO));
         if(gap>=4)facts.push({p:3,t:`Your first ${speciesLink(id)} since ${MONTHS[monthOf(last.dateISO)-1]}.`});}}
@@ -2636,22 +2723,78 @@ function monthFacts(y,m,list){
       else if(ratio<=0.5)facts.push({p:2,t:`Fewer ${speciesLink(topId)} than last ${MONTHS[m-1]} (${topN} vs ${prevN}).`});}}
   return facts.sort((a,b)=>b.p-a.p).slice(0,3).map(f=>f.t);
 }
-function fieldNotePage(ym,list){
+function fieldNotePage(ym,list,bySpecies){
   const[y,m]=ym.split('-').map(Number),wash=`var(--wash-${categoryTint(list)})`;
   const nSpecies=new Set(list.map(s=>s.speciesId)).size;
   const lead=`In ${MONTHS[m-1]} you logged ${list.length} sighting${list.length!==1?'s':''} across ${nSpecies} species.`;
   return `<div class="notes-page" style="--wash:${wash}">
     <div class="np-head">${MONTHS[m-1]}, ${y} — Field Notes</div>
-    <p class="np-lead">${lead}</p>${monthFacts(y,m,list).map(f=>`<p>${f}</p>`).join('')}</div>`;
+    <p class="np-lead">${lead}</p>${monthFacts(y,m,list,bySpecies).map(f=>`<p>${f}</p>`).join('')}</div>`;
 }
 function seasonKeyOf(y,m){const s=seasonOfMonth(m);if(s==='Winter'&&m===12)return`${y}-${y+1}-Winter`;if(s==='Winter')return`${y-1}-${y}-Winter`;return`${y}-${s}`;}
+// ---- season rollups (§2.1) — one page per COMPLETED season, above its newest month ----
+const SEASON_ORDER={Winter:0,Spring:1,Summer:2,Fall:3};
+function seasonEndYM(sk){const p=sk.split('-');           // "A-B-Winter" ends Feb of B; else May/Aug/Nov of Y
+  if(p[p.length-1]==='Winter')return[+p[1],2];
+  return{Spring:[+p[0],5],Summer:[+p[0],8],Fall:[+p[0],11]}[p[1]];}
+function seasonComplete(sk){const[ey,em]=seasonEndYM(sk);const n=new Date();
+  return n.getFullYear()*12+(n.getMonth()+1) > ey*12+em;}     // strictly past the last month → complete
+function seasonSightings(sk){return state.sightings.filter(s=>seasonKeyOf(yearOf(s.dateISO),monthOf(s.dateISO))===sk);}
+function seasonLabel(sk){const p=sk.split('-');
+  if(p[p.length-1]==='Winter')return`Winter ${p[0]}–${String(p[1]).slice(2)}`;   // "Winter 2026–27"
+  return`${p[1]} ${p[0]}`;}
+function seasonSeed(sk){const p=sk.split('-');return(+p[0])*17+SEASON_ORDER[p[p.length-1]];}  // start-year anchored
+function seasonFacts(sk,list,bySpecies,seed){
+  const facts=[],counts={};list.forEach(s=>counts[s.speciesId]=(counts[s.speciesId]||0)+1);
+  // superlative species over the whole season
+  let topId=null,topN=0;for(const id in counts)if(counts[id]>topN){topN=counts[id];topId=id;}
+  if(topId&&topN>=3)facts.push(seededPick([
+    `The ${speciesLink(topId)} defined the season — ${topN} sightings, more than any other.`,
+    `No species turned up more than the ${speciesLink(topId)} this season: ${topN} sightings.`,
+    `${speciesLink(topId)} led the season with ${topN} sightings.`],seed));
+  // firsts — species whose first-ever record falls within this season
+  const firsts=[];for(const id in counts){const all=bySpecies.get(id)||[];
+    if(all[0]&&seasonKeyOf(yearOf(all[0].dateISO),monthOf(all[0].dateISO))===sk)firsts.push(id);}
+  if(firsts.length===1)facts.push(`A new species for the journal: ${speciesLink(firsts[0])}.`);
+  else if(firsts.length>1)facts.push(seededPick([
+    `${firsts.length} species new to the journal, including ${speciesLink(firsts[0])}.`,
+    `First records for ${firsts.length} species this season, ${speciesLink(firsts[0])} among them.`],seed+firsts.length));
+  return facts.slice(0,2);                                    // shorter than a monthly page
+}
+function seasonRollupPage(sk,list,bySpecies){
+  const wash=`var(--wash-${categoryTint(list)})`,nSpecies=new Set(list.map(s=>s.speciesId)).size,seed=seasonSeed(sk);
+  const lead=`Across the season, ${list.length} sighting${list.length!==1?'s':''} of ${nSpecies} species.`;
+  const facts=seasonFacts(sk,list,bySpecies,seed);
+  return `<div class="notes-page" style="--wash:${wash}">
+    <div class="np-head">${seasonLabel(sk)} — Season Notes</div>
+    <p class="np-lead">${lead}</p>${facts.map(f=>`<p>${f}</p>`).join('')}</div>`;
+}
 function renderFieldNotes(){
   const body=$('#almanacBody'),groups={};
   state.sightings.forEach(s=>{const k=s.dateISO.slice(0,7);(groups[k]=groups[k]||[]).push(s);});
   const keys=Object.keys(groups).sort().reverse();
   if(!keys.length){body.innerHTML=`<div class="empty"><svg class="ico"><use href="#ui-book"/></svg><p>No field notes yet — log a few sightings and monthly recaps appear here.</p></div>`;return;}
-  body.innerHTML=keys.map(k=>fieldNotePage(k,groups[k])).join('');
-  body.querySelectorAll('.link-species').forEach(a=>a.onclick=()=>openSpeciesPlate(a.dataset.id));
+  // §2.3 perf: build speciesId → asc-sorted sightings ONCE and share it across every page.
+  const bySpecies=new Map();
+  state.sightings.forEach(s=>{if(!bySpecies.has(s.speciesId))bySpecies.set(s.speciesId,[]);bySpecies.get(s.speciesId).push(s);});
+  bySpecies.forEach(arr=>arr.sort((a,b)=>a.dateISO<b.dateISO?-1:(a.dateISO>b.dateISO?1:0)));
+  // Emit each completed season's rollup above the first (newest) month of that season.
+  // `emitted` is shared with the deferred "earlier months" render so a season that
+  // straddles the 12-month window boundary is never doubled.
+  const emitted=new Set();
+  const renderKeys=ks=>ks.map(k=>{
+    const[y,m]=k.split('-').map(Number),sk=seasonKeyOf(y,m);let html='';
+    if(!emitted.has(sk)){emitted.add(sk);
+      if(seasonComplete(sk))html+=seasonRollupPage(sk,seasonSightings(sk),bySpecies);}
+    return html+fieldNotePage(k,groups[k],bySpecies);
+  }).join('');
+  const wireLinks=root=>root.querySelectorAll('.link-species').forEach(a=>a.onclick=()=>openSpeciesPlate(a.dataset.id));
+  const recent=keys.slice(0,12),earlier=keys.slice(12);   // §2.3: only the 12 most recent months up front
+  body.innerHTML=renderKeys(recent)+
+    (earlier.length?`<button class="act ghost" id="fnMore" style="width:100%;margin-top:8px">Show earlier months</button><div id="fnEarlier"></div>`:'');
+  wireLinks(body);
+  const more=$('#fnMore');
+  if(more)more.onclick=()=>{const box=$('#fnEarlier');box.innerHTML=renderKeys(earlier);wireLinks(box);more.remove();};
 }
 
 /* ---- on this day (§7.4) ---- */
@@ -2663,7 +2806,16 @@ function renderOnThisDay(boxId){
     const items=byYear[y],counts={};items.forEach(s=>counts[s.speciesId]=(counts[s.speciesId]||0)+1);
     const parts=Object.entries(counts).map(([id,n])=>{const nm=speciesById(id)?speciesById(id).name:'?';return `${n} ${nm}${n>1?'s':''}`;});
     const place=items.find(s=>s.location&&s.location.placeName);
-    const card=el('div',{class:'otd-card',onclick:()=>openSpeciesPlate(items[0].speciesId)});
+    // Single-species day → the plate. Multi-species day → the Almanac heatmap for
+    // that date's day-list, rather than arbitrarily picking one species' plate.
+    const onCard=()=>{
+      if(Object.keys(counts).length<=1){openSpeciesPlate(items[0].speciesId);return;}
+      almanac.view='heatmap';almanac.year=+y;almanac.hmSpecies='';
+      const iso=`${y}-${todayLocal().slice(5)}`;
+      const show=()=>{renderAlmanac();showHeatmapDay(iso);};
+      if(currentTab()==='almanac')show();else{location.hash='#almanac';setTimeout(show,30);}
+    };
+    const card=el('div',{class:'otd-card',onclick:onCard});
     card.innerHTML=`<svg class="ico"><use href="#ui-book"/></svg><div><div class="otd-h">On this day in ${y}</div>`+
       `<div class="otd-b">${esc(parts.join(', '))}${place?' — '+esc(place.location.placeName):''}</div></div>`;
     box.appendChild(card);
@@ -2683,8 +2835,11 @@ function openSpeciesPlate(id){
       <div><div class="st">Most in</div><div class="sv">${MONTHS[st.mostMonth]}</div></div>
       <div><div class="st">Usual spot</div><div class="sv">${st.mostSpot?esc(st.mostSpot):'—'}</div></div>
     </div>`:'<p class="muted">No sightings logged yet.</p>';
-  const specimens=list.map(s=>`<div class="specimen"><div class="sd">${fmtDate(s.dateISO)}${s.timeOfDay?' · '+TOD_LABEL[s.timeOfDay]:''}${s.weather?' · '+esc(weatherText(s.weather)):''}</div>`+
-    `<div class="sb">${esc((s.location&&s.location.placeName)||'—')}${s.count!=null?' · ×'+s.count:''}${s.notes?' — '+esc(s.notes.split('\n')[0]):''}</div></div>`).join('');
+  const specHtml=list.map(s=>`<div class="specimen"><div class="sd">${fmtDate(s.dateISO)}${s.timeOfDay?' · '+TOD_LABEL[s.timeOfDay]:''}${s.weather?' · '+esc(weatherText(s.weather)):''}</div>`+
+    `<div class="sb">${esc((s.location&&s.location.placeName)||'—')}${s.count!=null?' · ×'+s.count:''}${s.notes?' — '+esc(s.notes.split('\n')[0]):''}</div></div>`);
+  const SPEC_CAP=50;                                   // cap the initial render for busy species
+  const specimens=(specHtml.slice(0,SPEC_CAP).join('')||'<p class="muted">None yet.</p>')+
+    (specHtml.length>SPEC_CAP?`<button class="act ghost" id="specMore" style="margin-top:8px">Show all ${specHtml.length} specimens</button>`:'');
   openSheet(`
     <div class="plate-illus" style="--wash:var(--wash-${sp.category})">${speciesIcon(sp,'ico')}</div>
     <div class="plate-cap"><div class="pn">${esc(sp.name)}</div><div class="pc">${esc(CAT_LABEL[sp.category])}</div><div class="plno">Plate No. ${plateNumber(id)}</div></div>
@@ -2692,8 +2847,9 @@ function openSpeciesPlate(id){
     ${st?`<div class="al-title">By month</div>${barChartSVG(st.freq,MONTHS_SHORT,{width:340,height:110})}`:''}
     ${hasPts?`<div id="plateMap" style="height:150px;width:100%;border:1px solid var(--rule);border-radius:4px;background:var(--paper-3);margin:8px 0"></div>`:''}
     ${photoIds.length?`<div class="photo-strip" id="platePhotos"></div>`:''}
-    <div class="al-title">Specimens</div>${specimens||'<p class="muted">None yet.</p>'}
+    <div class="al-title">Specimens</div><div id="specimenList">${specimens}</div>
     <div class="btnrow" style="margin-top:14px"><button class="act ghost" id="plClose">Close</button></div>`);
+  const sm=$('#specMore');if(sm)sm.onclick=()=>{$('#specimenList').innerHTML=specHtml.join('');};
   let plateMap=null;
   sheetCleanup=()=>{if(plateMap){plateMap.remove();plateMap=null;}revokeDetailPhotoUrls();};
   if(hasPts&&typeof L!=='undefined')setTimeout(()=>{
