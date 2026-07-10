@@ -1,6 +1,6 @@
 {
-  "name": "Field Journal",
-  "short_name": "Field Journal",
+  "name": "Starling Field Journal",
+  "short_name": "Starling",
   "description": "A private wildlife & nature sighting field journal.",
   "start_url": "./",
   "scope": "./",

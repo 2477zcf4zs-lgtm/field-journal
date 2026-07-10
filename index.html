@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#f6f1e4">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Field Journal">
+<meta name="apple-mobile-web-app-title" content="Starling">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<title>Field Journal</title>
+<title>Starling Field Journal</title>
 <style>
 /* ============================================================= *
  * Field Journal — design tokens (§12.1). Established Phase 0,    *
@@ -1125,7 +1125,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div id="app">
   <div class="topbar">
     <div>
-      <h1 id="topTitle">Field Journal</h1>
+      <h1 id="topTitle">Starling Field Journal</h1>
       <div class="sub" id="topSub">Log a sighting</div>
     </div>
     <button class="iconbtn" id="gearBtn" aria-label="Settings"><svg class="ico"><use href="#ui-gear"/></svg></button>
@@ -1237,7 +1237,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <script>
 "use strict";
 /* Keep APP_VERSION in step with CACHE_VERSION in sw.js. */
-const APP_VERSION='v0.6.0';
+const APP_VERSION='v0.6.1';
 const SCHEMA_VERSION=1;
 
 /* ---------------- tiny helpers ---------------- */
@@ -1314,6 +1314,10 @@ function idbAll(store){return new Promise((res,rej)=>{const r=tx(store,'readonly
 function idbPut(store,val){return new Promise((res,rej)=>{const t=_db.transaction(store,'readwrite');t.objectStore(store).put(val);t.oncomplete=()=>res(val);t.onerror=()=>rej(t.error);});}
 function idbDel(store,key){return new Promise((res,rej)=>{const t=_db.transaction(store,'readwrite');t.objectStore(store).delete(key);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
 function idbClear(store){return new Promise((res,rej)=>{const t=_db.transaction(store,'readwrite');t.objectStore(store).clear();t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
+// Bulk variants: one transaction (one commit) for N records — per-record
+// idbPut/idbDel loops pay a full commit each, which is seconds at N=500.
+function idbPutAll(store,vals){return new Promise((res,rej)=>{const t=_db.transaction(store,'readwrite'),os=t.objectStore(store);vals.forEach(v=>os.put(v));t.oncomplete=()=>res(vals);t.onerror=()=>rej(t.error);});}
+function idbDelAll(store,keys){return new Promise((res,rej)=>{const t=_db.transaction(store,'readwrite'),os=t.objectStore(store);keys.forEach(k=>os.delete(k));t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
 
 /* ---------------- app state ---------------- */
 // form.spotId: undefined = untouched (eligible for last-used preselect),
@@ -1394,7 +1398,7 @@ function showFatal(msg){
 }
 
 /* ---------------- routing ---------------- */
-const TAB_TITLES={log:['Field Journal','Log a sighting'],journal:['Journal','Your sightings'],
+const TAB_TITLES={log:['Starling Field Journal','Log a sighting'],journal:['Journal','Your sightings'],
   map:['Map','Where you’ve looked'],almanac:['Almanac','Seasons & summaries']};
 function routeTo(hash){
   let tab=(hash||'#log').replace('#','').split('/')[0];
@@ -1536,6 +1540,9 @@ async function saveSighting(){
   finally{isSaving=false;const b=$('#saveBtn');if(b)b.disabled=false;}
 }
 async function _saveSighting(f){
+  // Deep future-date guard: the input max/clamp only cover manual entry — a
+  // legacy/imported future date loaded via Edit would otherwise re-save as-is.
+  if(f.dateISO>todayLocal())f.dateISO=todayLocal();
   const sp=speciesById(f.speciesId);
   const spot=f.spotId?spotById(f.spotId):null;
   let loc;   // NB: do NOT name this `location` — it shadows window.location.
@@ -1841,7 +1848,7 @@ function openSettings(){
     <div class="section-label">Storage</div>
     <p class="muted" id="storageInfo">…</p>
     <div class="section-label">About</div>
-    <p class="muted">Field Journal <span class="tag" id="aboutVersion" style="user-select:none;-webkit-user-select:none">${APP_VERSION}</span><br>
+    <p class="muted">Starling Field Journal <span class="tag" id="aboutVersion" style="user-select:none;-webkit-user-select:none">${APP_VERSION}</span><br>
       <span class="small-note">Schema v${SCHEMA_VERSION} · ${state.sightings.length} sightings · ${state.species.length} species</span></p>
     <div class="btnrow" style="margin-top:8px"><button class="act ghost" id="setClose">Close</button></div>
   `);
@@ -1876,18 +1883,20 @@ function openDevTools(){
     <p class="small-note" id="devNote">Seeded records are tagged and never fetch weather.</p>
     <div class="btnrow" style="margin-top:14px"><button class="act ghost" id="devBack">Back</button></div>`);
   $('#devBack').onclick=openSettings;
+  const refresh=()=>{if(currentTab()==='journal'){state.journalWindow=60;renderJournal();}else if(currentTab()==='almanac')renderAlmanac();};
   $('#devSeed').onclick=async()=>{
     const btn=$('#devSeed');btn.disabled=true;btn.textContent='Seeding…';
     const n=await seedTestData(500);
-    closeSheet();
-    if(currentTab()==='journal'){state.journalWindow=60;renderJournal();}else if(currentTab()==='almanac')renderAlmanac();
+    closeSheet();refresh();
     toast(`Seeded ${n} test sightings`,null);
   };
+  let armed=false;                                   // destructive → armed two-tap, like every other delete
   $('#devUnseed').onclick=async()=>{
-    const btn=$('#devUnseed');btn.disabled=true;btn.textContent='Deleting…';
+    const btn=$('#devUnseed');
+    if(!armed){armed=true;btn.textContent='Tap again to delete';return;}
+    btn.disabled=true;btn.textContent='Deleting…';
     const n=await deleteSeededData();
-    closeSheet();
-    if(currentTab()==='journal'){state.journalWindow=60;renderJournal();}else if(currentTab()==='almanac')renderAlmanac();
+    closeSheet();refresh();
     toast(`Deleted ${n} seeded sightings`,null);
   };
 }
@@ -1916,12 +1925,17 @@ async function seedTestData(n){
       weather:null,weatherPending:false,moonPhase:computeMoon(dateISO,null),  // weatherPending:false → never hits the weather API
       photoIds:[],seeded:true,createdAt:created,updatedAt:created});
   }
-  for(const r of recs){await idbPut('sightings',r);state.sightings.push(r);}
+  await idbPutAll('sightings',recs);
+  state.sightings.push(...recs);
   return recs.length;
 }
 async function deleteSeededData(){
   const doomed=state.sightings.filter(s=>s.seeded);
-  for(const s of doomed)await idbDel('sightings',s.id).catch(()=>{});
+  // A seeded record edited during testing may have gained photos — clean those
+  // up like deleteSighting does, or the blobs are orphaned in IDB forever.
+  const photoIds=[].concat(...doomed.map(s=>s.photoIds||[]));
+  if(photoIds.length)await idbDelAll('photos',photoIds).catch(()=>{});
+  await idbDelAll('sightings',doomed.map(s=>s.id));
   state.sightings=state.sightings.filter(s=>!s.seeded);
   return doomed.length;
 }
@@ -2571,7 +2585,7 @@ function freqByMonth(list){const a=Array(12).fill(0);list.forEach(s=>a[monthOf(s
 function freqBySeason(list){const o={Winter:0,Spring:0,Summer:0,Fall:0};list.forEach(s=>o[seasonOfMonth(monthOf(s.dateISO))]++);return o;}
 function sightingYears(){return[...new Set(state.sightings.map(s=>yearOf(s.dateISO)))].sort((a,b)=>a-b);}
 // Pager bounds: the years with data, always including the current year even if empty.
-function yearRange(){const ys=sightingYears().slice();const cy=new Date().getFullYear();if(!ys.includes(cy))ys.push(cy);return[Math.min(...ys),Math.max(...ys)];}
+function yearRange(){const ys=sightingYears();const cy=new Date().getFullYear();if(!ys.includes(cy))ys.push(cy);return[Math.min(...ys),Math.max(...ys)];}
 function speciesSightings(id){return state.sightings.filter(s=>s.speciesId===id).sort((a,b)=>a.dateISO<b.dateISO?-1:(a.dateISO>b.dateISO?1:0));}
 function speciesStats(id){
   const list=speciesSightings(id);if(!list.length)return null;
@@ -2643,6 +2657,7 @@ function renderHeatmap(){
   $('#hmNext').onclick=()=>{if(A.year<maxY){A.year++;renderHeatmap();}};
   $('#hmSpecies').onchange=e=>{A.hmSpecies=e.target.value;renderHeatmap();};
   body.querySelectorAll('.heat-cell.has').forEach(c=>c.onclick=()=>showHeatmapDay(c.dataset.iso));
+  if(A.pendingDay){const d=A.pendingDay;A.pendingDay=null;showHeatmapDay(d);}   // one-shot, set by On-This-Day cards
 }
 // Populate the heatmap day-list for one date. Extracted so On-This-Day cards can
 // route here too. Reuses the journal thumb-URL array (revoked on each rebuild).
@@ -2717,7 +2732,7 @@ function monthFacts(y,m,list,bySpecies){
   if(withWx.length>=3){const rainy=withWx.filter(s=>(s.weather.precipMm>0)||/rain|drizzle|shower|thunder/i.test(s.weather.condition));
     if(rainy.length>=3)facts.push({p:4,t:`${rainy.length} of ${withWx.length} sightings came in the wet.`});}
   // prior-year comparison for top species
-  if(topId){const prevN=state.sightings.filter(s=>s.speciesId===topId&&yearOf(s.dateISO)===y-1&&monthOf(s.dateISO)===m).length;
+  if(topId){const prevN=(bySpecies.get(topId)||[]).filter(s=>s.dateISO.startsWith(`${y-1}-${pad(m)}`)).length;
     if(prevN>0){const ratio=topN/prevN;
       if(ratio>=2)facts.push({p:2,t:`Twice as many ${speciesLink(topId)} as last ${MONTHS[m-1]}.`});
       else if(ratio<=0.5)facts.push({p:2,t:`Fewer ${speciesLink(topId)} than last ${MONTHS[m-1]} (${topN} vs ${prevN}).`});}}
@@ -2739,7 +2754,10 @@ function seasonEndYM(sk){const p=sk.split('-');           // "A-B-Winter" ends F
   return{Spring:[+p[0],5],Summer:[+p[0],8],Fall:[+p[0],11]}[p[1]];}
 function seasonComplete(sk){const[ey,em]=seasonEndYM(sk);const n=new Date();
   return n.getFullYear()*12+(n.getMonth()+1) > ey*12+em;}     // strictly past the last month → complete
-function seasonSightings(sk){return state.sightings.filter(s=>seasonKeyOf(yearOf(s.dateISO),monthOf(s.dateISO))===sk);}
+function seasonMonthKeys(sk){const p=sk.split('-');           // the season's 3 'YYYY-MM' keys
+  if(p[p.length-1]==='Winter')return[`${p[0]}-12`,`${p[1]}-01`,`${p[1]}-02`];
+  const start={Spring:3,Summer:6,Fall:9}[p[1]];
+  return[0,1,2].map(i=>`${p[0]}-${pad(start+i)}`);}
 function seasonLabel(sk){const p=sk.split('-');
   if(p[p.length-1]==='Winter')return`Winter ${p[0]}–${String(p[1]).slice(2)}`;   // "Winter 2026–27"
   return`${p[1]} ${p[0]}`;}
@@ -2785,7 +2803,7 @@ function renderFieldNotes(){
   const renderKeys=ks=>ks.map(k=>{
     const[y,m]=k.split('-').map(Number),sk=seasonKeyOf(y,m);let html='';
     if(!emitted.has(sk)){emitted.add(sk);
-      if(seasonComplete(sk))html+=seasonRollupPage(sk,seasonSightings(sk),bySpecies);}
+      if(seasonComplete(sk))html+=seasonRollupPage(sk,[].concat(...seasonMonthKeys(sk).map(mk=>groups[mk]||[])),bySpecies);}
     return html+fieldNotePage(k,groups[k],bySpecies);
   }).join('');
   const wireLinks=root=>root.querySelectorAll('.link-species').forEach(a=>a.onclick=()=>openSpeciesPlate(a.dataset.id));
@@ -2811,9 +2829,10 @@ function renderOnThisDay(boxId){
     const onCard=()=>{
       if(Object.keys(counts).length<=1){openSpeciesPlate(items[0].speciesId);return;}
       almanac.view='heatmap';almanac.year=+y;almanac.hmSpecies='';
-      const iso=`${y}-${todayLocal().slice(5)}`;
-      const show=()=>{renderAlmanac();showHeatmapDay(iso);};
-      if(currentTab()==='almanac')show();else{location.hash='#almanac';setTimeout(show,30);}
+      // Hand the date to renderHeatmap via pendingDay: routeTo's own render
+      // consumes it, so no timer race with the async hashchange and no double render.
+      almanac.pendingDay=`${y}-${todayLocal().slice(5)}`;
+      if(currentTab()==='almanac')renderAlmanac();else location.hash='#almanac';
     };
     const card=el('div',{class:'otd-card',onclick:onCard});
     card.innerHTML=`<svg class="ico"><use href="#ui-book"/></svg><div><div class="otd-h">On this day in ${y}</div>`+
