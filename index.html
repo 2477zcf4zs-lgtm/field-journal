@@ -162,7 +162,7 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
 /* ---- sheets / modals ---- */
 .sheet-scrim{position:fixed;inset:0;background:rgba(43,33,23,.34);z-index:40;display:none;}
 .sheet-scrim.show{display:block;}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--paper);
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--paper);overscroll-behavior:contain;
   border-top-left-radius:14px;border-top-right-radius:14px;border-top:1px solid var(--ink);
   max-height:90vh;overflow-y:auto;transform:translateY(100%);transition:transform .15s ease;
   padding:8px 18px calc(24px + env(safe-area-inset-bottom));max-width:680px;margin:0 auto;}
@@ -346,6 +346,13 @@ label.fld{display:block;font-variant:small-caps;letter-spacing:.1em;color:var(--
 .stat-band{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:10px 0;margin:12px 0;}
 .stat-band .st{font-variant:small-caps;letter-spacing:.06em;font-size:11px;color:var(--ink-2);}
 .stat-band .sv{font-family:var(--serif);font-size:15.5px;}
+/* species plate: custom portrait + marginalia (journal notes) */
+.plate-illus.has-img{padding:0;}
+.plate-illus.has-img::before{display:none;}   /* washes are for engravings, not photographs */
+.plate-illus.has-img img{width:100%;height:220px;object-fit:cover;display:block;}
+.marg-note{border-left:2px solid var(--rule);padding:2px 2px 2px 12px;margin:10px 0;}
+.marg-h{font-family:var(--serif);font-variant:small-caps;letter-spacing:.1em;font-size:12.5px;color:var(--ink-2);}
+.marg-b{font-family:var(--serif);font-size:15.5px;line-height:1.55;white-space:pre-wrap;}
 .specimen{border:1px solid var(--rule);border-radius:3px;padding:8px 10px;margin:6px 0;background:var(--paper-2);}
 .specimen .sd{font-family:var(--serif);font-variant:small-caps;letter-spacing:.08em;font-size:11.5px;color:var(--ink-2);}
 .specimen .sb{font-size:14px;margin-top:2px;}
@@ -1340,7 +1347,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <script>
 "use strict";
 /* Keep APP_VERSION in step with CACHE_VERSION in sw.js. */
-const APP_VERSION='v0.7.1';
+const APP_VERSION='v0.7.2';
 const SCHEMA_VERSION=1;
 
 /* ---------------- tiny helpers ---------------- */
@@ -1736,6 +1743,40 @@ function resetForm(){
 // matter how the sheet is dismissed — including a scrim tap that routes through
 // the generic closeSheet. Whoever opens a sheet with a resource sets it.
 let sheetCleanup=null;
+/* Swipe-down dismissal (§wife-notes 4): engages only when the sheet's own
+ * scroll is at the top and the gesture is clearly downward; never engages from
+ * inside a Leaflet map or a text control. Dismissal routes through closeSheet()
+ * so sheetCleanup always runs. Close buttons and scrim tap remain as fallbacks. */
+function wireSheetSwipe(){
+  const sheet=$('#sheet');if(!sheet)return;
+  let tracking=false,engaged=false,startX=0,startY=0,dy=0,startT=0;
+  const excluded=t=>t.closest&&t.closest('.leaflet-container,input,textarea,select');
+  sheet.addEventListener('touchstart',e=>{
+    tracking=e.touches.length===1&&!excluded(e.target)&&sheet.scrollTop<=0;
+    engaged=false;dy=0;
+    if(tracking){startX=e.touches[0].clientX;startY=e.touches[0].clientY;startT=Date.now();}
+  },{passive:true});
+  sheet.addEventListener('touchmove',e=>{
+    if(!tracking)return;
+    const t=e.touches[0];dy=t.clientY-startY;const dx=t.clientX-startX;
+    if(!engaged){
+      if(dy>12&&dy>Math.abs(dx)*1.2&&sheet.scrollTop<=0){engaged=true;sheet.style.transition='none';}
+      else if(dy<-4||Math.abs(dx)>Math.abs(dy)+8){tracking=false;return;}   // it's a scroll/horizontal gesture
+      else return;
+    }
+    e.preventDefault();
+    sheet.style.transform=`translateY(${Math.max(0,dy)}px)`;
+  },{passive:false});
+  const end=()=>{
+    if(!engaged){tracking=false;return;}
+    tracking=false;engaged=false;
+    sheet.style.transition='';sheet.style.transform='';
+    const vel=dy/(Date.now()-startT||1);            // px/ms
+    if(dy>120||(dy>48&&vel>0.5))closeSheet();       // far enough or a real flick
+  };
+  sheet.addEventListener('touchend',end);
+  sheet.addEventListener('touchcancel',end);
+}
 function runSheetCleanup(){if(sheetCleanup){try{sheetCleanup();}catch(e){}sheetCleanup=null;}}
 function openSheet(html){runSheetCleanup();$('#sheetBody').innerHTML=html;$('#scrim').classList.add('show');$('#sheet').classList.add('show');}
 function closeSheet(){runSheetCleanup();$('#scrim').classList.remove('show');$('#sheet').classList.remove('show');}
@@ -2073,7 +2114,7 @@ async function buildExport(withPhotos){
   if(withPhotos){
     const raw=await idbAll('photos');
     for(const p of raw){
-      photos.push({id:p.id,sightingId:p.sightingId,width:p.width,height:p.height,createdAt:p.createdAt,
+      photos.push({id:p.id,sightingId:p.sightingId,speciesId:p.speciesId||null,width:p.width,height:p.height,createdAt:p.createdAt,
         thumb:await blobToB64(p.thumb),full:await blobToB64(p.full)});
     }
   }
@@ -2163,7 +2204,7 @@ async function runImport(data,mode){
     if(data.photos&&data.photos.length){
       const exPh=new Set((await idbAll('photos')).map(p=>p.id));
       for(const p of data.photos){if(mode==='merge'&&exPh.has(p.id))continue;
-        await idbPut('photos',{id:p.id,sightingId:p.sightingId,width:p.width,height:p.height,createdAt:p.createdAt,
+        await idbPut('photos',{id:p.id,sightingId:p.sightingId,speciesId:p.speciesId||null,width:p.width,height:p.height,createdAt:p.createdAt,
           thumb:await b64ToBlob(p.thumb),full:await b64ToBlob(p.full)});}
     }
     // rehydrate
@@ -2258,6 +2299,7 @@ function wireUI(){
   $('#tabbar').addEventListener('click',e=>{const b=e.target.closest('button');if(b)location.hash='#'+b.dataset.tab;});
   $('#gearBtn').onclick=openSettings;
   $('#scrim').onclick=closeSheet;
+  wireSheetSwipe();
   $('#saveBtn').onclick=saveSighting;
   $('#cancelEdit').onclick=resetForm;
   $('#dateInput').onchange=e=>{let v=e.target.value||todayLocal();
@@ -3093,6 +3135,62 @@ function renderOnThisDay(boxId){
 }
 
 /* ---- species detail plate (§7.5) ---- */
+/* Marginalia (journal-note fields on the species record). Optional strings;
+ * empty fields render nothing. They export/import with the species record. */
+const LORE_FIELDS=[['loreSpiritual','Spiritual Associations'],['loreMythic','Lore & Myth'],
+  ['loreBehavior','Behaviors & Characteristics'],['loreNotes','General Notes']];
+function marginaliaHtml(sp){
+  const blocks=LORE_FIELDS.filter(([k])=>sp[k]&&String(sp[k]).trim())
+    .map(([k,label])=>`<div class="marg-note"><div class="marg-h">${label}</div><div class="marg-b">${esc(sp[k])}</div></div>`).join('');
+  return blocks||`<p class="small-note">Dreams, lore, habits — tap the pencil to add notes for this species.</p>`;
+}
+function wireMarginalia(sp){
+  const box=$('#marginalia'),btn=$('#margEdit');if(!box||!btn)return;
+  btn.onclick=()=>{
+    box.innerHTML=LORE_FIELDS.map(([k,label],i)=>
+      `<div class="field-block"><label class="fld" for="marg${i}">${label}</label><textarea id="marg${i}" rows="3"></textarea></div>`).join('')+
+      `<div class="btnrow"><button class="act" id="margSave">Save notes</button><button class="act ghost" id="margCancel">Cancel</button></div>`;
+    LORE_FIELDS.forEach(([k],i)=>{$('#marg'+i).value=sp[k]||'';});
+    $('#margCancel').onclick=()=>{box.innerHTML=marginaliaHtml(sp);};
+    $('#margSave').onclick=async()=>{
+      LORE_FIELDS.forEach(([k],i)=>{const v=$('#marg'+i).value.trim();if(v)sp[k]=v;else delete sp[k];});
+      await idbPut('species',sp);
+      box.innerHTML=marginaliaHtml(sp);
+      toast('Marginalia saved',null);
+    };
+  };
+}
+/* Custom plate portrait: one photo record (speciesId set, sightingId null) in
+ * the photos store, referenced by species.portraitPhotoId. Sighting delete/undo
+ * paths only touch photoIds listed on sightings, so portraits are never swept. */
+async function loadPlatePortrait(sp){
+  const img=$('#platePortrait');if(!img)return;
+  const p=sp.portraitPhotoId?await idbGet('photos',sp.portraitPhotoId).catch(()=>null):null;
+  const illus=img.closest('.plate-illus');
+  if(!p||!p.full){if(illus){illus.classList.remove('has-img');illus.innerHTML=speciesIcon(sp,'ico');}return;}
+  const url=URL.createObjectURL(p.full);detailPhotoUrls.push(url);   // revoked by the plate's sheetCleanup
+  img.src=url;
+}
+async function setSpeciesPortrait(sp,file){
+  try{
+    const c=await compressImage(file);
+    const rec={id:uuid(),sightingId:null,speciesId:sp.id,thumb:c.thumb,full:c.full,width:c.width,height:c.height,createdAt:nowISO()};
+    await idbPut('photos',rec);
+    const old=sp.portraitPhotoId;
+    sp.portraitPhotoId=rec.id;
+    await idbPut('species',sp);
+    if(old)await idbDel('photos',old).catch(()=>{});
+    openSpeciesPlate(sp.id);
+    toast('Plate image set',null);
+  }catch(e){console.error('portrait failed',e);toast('Could not read that photo',null);}
+}
+async function removeSpeciesPortrait(sp){
+  const old=sp.portraitPhotoId;
+  delete sp.portraitPhotoId;
+  await idbPut('species',sp);
+  if(old)await idbDel('photos',old).catch(()=>{});
+  openSpeciesPlate(sp.id);
+}
 function openSpeciesPlate(id){
   const sp=speciesById(id);if(!sp)return;
   const st=speciesStats(id),list=speciesSightings(id).slice().reverse();
@@ -3110,15 +3208,28 @@ function openSpeciesPlate(id){
   const SPEC_CAP=50;                                   // cap the initial render for busy species
   const specimens=(specHtml.slice(0,SPEC_CAP).join('')||'<p class="muted">None yet.</p>')+
     (specHtml.length>SPEC_CAP?`<button class="act ghost" id="specMore" style="margin-top:8px">Show all ${specHtml.length} specimens</button>`:'');
+  const hasPortrait=!!sp.portraitPhotoId;
   openSheet(`
-    <div class="plate-illus" style="--wash:var(--wash-${sp.category})">${speciesIcon(sp,'ico')}</div>
+    <div class="plate-illus${hasPortrait?' has-img':''}" style="--wash:var(--wash-${sp.category})">${hasPortrait?`<img id="platePortrait" alt="${esc(sp.name)}">`:speciesIcon(sp,'ico')}</div>
     <div class="plate-cap"><div class="pn">${esc(sp.name)}</div><div class="pc">${esc(CAT_LABEL[sp.category])}</div><div class="plno">Plate No. ${plateNumber(id)}</div></div>
+    <div class="btnrow" style="justify-content:center;margin:8px 0 2px">
+      <label class="filebtn" style="min-height:34px;padding:5px 12px;font-size:13px">${hasPortrait?'Replace image…':'Set plate image…'}<input type="file" id="plPortraitFile" accept="image/*"></label>
+      ${hasPortrait?`<button class="act ghost danger" id="plPortraitRemove" style="min-height:34px;padding:5px 12px;font-size:13px">Remove</button>`:''}
+    </div>
     ${statHtml}
     ${st?`<div class="al-title">By month</div>${barChartSVG(st.freq,MONTHS_SHORT,{width:340,height:110})}`:''}
     ${hasPts?`<div id="plateMap" style="height:150px;width:100%;border:1px solid var(--rule);border-radius:4px;background:var(--paper-3);margin:8px 0"></div>`:''}
     ${photoIds.length?`<div class="photo-strip" id="platePhotos"></div>`:''}
+    <div class="al-title" style="display:flex;align-items:center;justify-content:space-between">Marginalia
+      <button class="iconbtn" id="margEdit" aria-label="Edit marginalia" style="min-width:38px;min-height:38px"><svg class="ico" style="width:18px;height:18px"><use href="#ui-log"/></svg></button></div>
+    <div id="marginalia">${marginaliaHtml(sp)}</div>
     <div class="al-title">Specimens</div><div id="specimenList">${specimens}</div>
     <div class="btnrow" style="margin-top:14px"><button class="act ghost" id="plClose">Close</button></div>`);
+  if(hasPortrait)loadPlatePortrait(sp);
+  wireMarginalia(sp);
+  $('#plPortraitFile').onchange=e=>{const f=e.target.files[0];if(f)setSpeciesPortrait(sp,f);e.target.value='';};
+  const pr=$('#plPortraitRemove');
+  if(pr){let armed=false;pr.onclick=()=>{if(!armed){armed=true;pr.textContent='Tap again to remove';return;}removeSpeciesPortrait(sp);};}
   const sm=$('#specMore');if(sm)sm.onclick=()=>{$('#specimenList').innerHTML=specHtml.join('');};
   let plateMap=null;
   sheetCleanup=()=>{if(plateMap){plateMap.remove();plateMap=null;}revokeDetailPhotoUrls();};
